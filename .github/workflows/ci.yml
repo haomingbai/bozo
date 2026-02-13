@@ -39,15 +39,20 @@ jobs:
             g++ \
             libboost-all-dev \
             libpq-dev \
+            postgresql-server-dev-all \
             libgtest-dev
 
       - name: Configure
-        run: >
-          cmake -S . -B build/ci-${{ matrix.ts_executor }} -G Ninja
-          -DCMAKE_BUILD_TYPE=RelWithDebInfo
-          -DOZO_BUILD_TESTS=${{ matrix.build_tests }}
-          -DOZO_BUILD_EXAMPLES=ON
-          -DOZO_USE_TS_EXECUTOR=${{ matrix.ts_executor }}
+        run: |
+          PG_TYPE_INCLUDE_DIR="$(pg_config --includedir-server)"
+          test -n "${PG_TYPE_INCLUDE_DIR}"
+          test -d "${PG_TYPE_INCLUDE_DIR}"
+          cmake -S . -B build/ci-${{ matrix.ts_executor }} -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DOZO_BUILD_TESTS=${{ matrix.build_tests }} \
+            -DOZO_BUILD_EXAMPLES=ON \
+            -DOZO_USE_TS_EXECUTOR=${{ matrix.ts_executor }} \
+            -DPostgreSQL_TYPE_INCLUDE_DIR="${PG_TYPE_INCLUDE_DIR}"
 
       - name: Build
         run: cmake --build build/ci-${{ matrix.ts_executor }} --parallel
