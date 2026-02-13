@@ -39,13 +39,19 @@ jobs:
             g++ \
             libboost-all-dev \
             libpq-dev \
-            libgtest-dev
+            libgtest-dev \
+            libgmock-dev
 
       - name: Configure
         run: |
           PG_TYPE_INCLUDE_DIR="$(pg_config --includedir-server 2>/dev/null || true)"
           if [ -z "${PG_TYPE_INCLUDE_DIR}" ] || [ ! -d "${PG_TYPE_INCLUDE_DIR}" ]; then
             PG_TYPE_INCLUDE_DIR="$(pg_config --includedir)"
+          fi
+          GTEST_CONFIG="$(find /usr/lib /usr/lib64 -path '*/cmake/GTest/GTestConfig.cmake' 2>/dev/null | head -n1 || true)"
+          GTEST_DIR_ARG=""
+          if [ -n "${GTEST_CONFIG}" ]; then
+            GTEST_DIR_ARG="-DGTest_DIR=$(dirname "${GTEST_CONFIG}")"
           fi
           test -n "${PG_TYPE_INCLUDE_DIR}"
           test -d "${PG_TYPE_INCLUDE_DIR}"
@@ -54,7 +60,8 @@ jobs:
             -DOZO_BUILD_TESTS=${{ matrix.build_tests }} \
             -DOZO_BUILD_EXAMPLES=ON \
             -DOZO_USE_TS_EXECUTOR=${{ matrix.ts_executor }} \
-            -DPostgreSQL_TYPE_INCLUDE_DIR="${PG_TYPE_INCLUDE_DIR}"
+            -DPostgreSQL_TYPE_INCLUDE_DIR="${PG_TYPE_INCLUDE_DIR}" \
+            ${GTEST_DIR_ARG}
 
       - name: Build
         run: cmake --build build/ci-${{ matrix.ts_executor }} --parallel
