@@ -39,12 +39,14 @@ jobs:
             g++ \
             libboost-all-dev \
             libpq-dev \
-            postgresql-server-dev-all \
             libgtest-dev
 
       - name: Configure
         run: |
-          PG_TYPE_INCLUDE_DIR="$(pg_config --includedir-server)"
+          PG_TYPE_INCLUDE_DIR="$(pg_config --includedir-server 2>/dev/null || true)"
+          if [ -z "${PG_TYPE_INCLUDE_DIR}" ] || [ ! -d "${PG_TYPE_INCLUDE_DIR}" ]; then
+            PG_TYPE_INCLUDE_DIR="$(pg_config --includedir)"
+          fi
           test -n "${PG_TYPE_INCLUDE_DIR}"
           test -d "${PG_TYPE_INCLUDE_DIR}"
           cmake -S . -B build/ci-${{ matrix.ts_executor }} -G Ninja \
