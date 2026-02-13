@@ -7,7 +7,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/mo
 # note: boost::coroutine should automatically pull in all the dependencies,
 #       however, due to changes in boost it doesn't always work until CMake
 #       is updated. we therefore look for all the dependencies ourselves.
-find_package(Boost COMPONENTS coroutine context system thread atomic REQUIRED)
+find_package(Boost 1.74 COMPONENTS coroutine context system thread atomic REQUIRED)
 find_package(PostgreSQL REQUIRED)
 
 # Try and find provided resource pool (e.g. from conan), default to vendored version otherwise
@@ -19,6 +19,20 @@ endif()
 option(OZO_BUILD_TESTS "Enable tests build" OFF)
 option(OZO_COVERAGE "Enable tests coverage" OFF)
 option(OZO_BUILD_EXAMPLES "Enable examples build" OFF)
+option(OZO_USE_TS_EXECUTOR "Use legacy Boost.Asio TS executor as default" OFF)
+
+set(OZO_RESOURCE_POOL_TARGET elsid::resource_pool)
+if (TARGET resource_pool)
+    set(OZO_RESOURCE_POOL_TARGET resource_pool)
+endif()
+
+if (NOT OZO_USE_TS_EXECUTOR AND TARGET ${OZO_RESOURCE_POOL_TARGET})
+    get_target_property(OZO_RESOURCE_POOL_DEFINITIONS ${OZO_RESOURCE_POOL_TARGET} INTERFACE_COMPILE_DEFINITIONS)
+    if (OZO_RESOURCE_POOL_DEFINITIONS AND NOT OZO_RESOURCE_POOL_DEFINITIONS STREQUAL "OZO_RESOURCE_POOL_DEFINITIONS-NOTFOUND")
+        list(FILTER OZO_RESOURCE_POOL_DEFINITIONS EXCLUDE REGEX "BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT")
+        set_property(TARGET ${OZO_RESOURCE_POOL_TARGET} PROPERTY INTERFACE_COMPILE_DEFINITIONS "${OZO_RESOURCE_POOL_DEFINITIONS}")
+    endif()
+endif()
 
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -40,9 +54,9 @@ target_include_directories(ozo INTERFACE
 
 target_compile_definitions(ozo INTERFACE -DBOOST_COROUTINES_NO_DEPRECATION_WARNING)
 target_compile_definitions(ozo INTERFACE -DBOOST_HANA_CONFIG_ENABLE_STRING_UDL)
-# For the time OZO may not support Executor TS
-# See https://github.com/yandex/ozo/issues/266
-target_compile_definitions(ozo INTERFACE -DBOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT)
+if (OZO_USE_TS_EXECUTOR)
+    target_compile_definitions(ozo INTERFACE -DBOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT)
+endif()
 
 target_link_libraries(ozo INTERFACE Boost::coroutine)
 target_link_libraries(ozo INTERFACE PostgreSQL::PostgreSQL)
