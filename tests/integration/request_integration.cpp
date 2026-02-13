@@ -552,7 +552,9 @@ TEST(request, should_send_and_receive_ltree) {
             const ozo::connection_info conn_info(OZO_PG_TEST_CONNINFO);
             ozo::error_code ec;
             auto conn = ozo::execute(conn_info[io],
-                                     "DROP EXTENSION IF EXISTS ltree"_SQL, yield[ec]);
+                                     "DROP TYPE IF EXISTS with_ltree"_SQL, yield[ec]);
+            ASSERT_REQUEST_OK(ec, conn);
+            ozo::execute(conn, "DROP EXTENSION IF EXISTS ltree"_SQL, yield[ec]);
             ASSERT_REQUEST_OK(ec, conn);
             ozo::execute(conn, "CREATE EXTENSION ltree"_SQL, yield[ec]);
             ASSERT_REQUEST_OK(ec, conn);
@@ -592,7 +594,9 @@ TEST(request, should_send_and_receive_composite_with_ltree_field) {
             const ozo::connection_info conn_info(OZO_PG_TEST_CONNINFO);
             ozo::error_code ec;
             auto conn = ozo::execute(conn_info[io],
-                                     "DROP EXTENSION IF EXISTS ltree"_SQL, yield[ec]);
+                                     "DROP TYPE IF EXISTS with_ltree"_SQL, yield[ec]);
+            ASSERT_REQUEST_OK(ec, conn);
+            ozo::execute(conn, "DROP EXTENSION IF EXISTS ltree"_SQL, yield[ec]);
             ASSERT_REQUEST_OK(ec, conn);
             ozo::execute(conn, "CREATE EXTENSION ltree"_SQL, yield[ec]);
             ASSERT_REQUEST_OK(ec, conn);

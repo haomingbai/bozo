@@ -138,7 +138,7 @@ TEST(result, for_raw_result_should_move_in_to_out) {
 
     ozo::recv_result(result, oid_map, out);
 
-    EXPECT_EQ(result.native_handle(), nullptr);
+    EXPECT_FALSE(result.valid());
     EXPECT_EQ(out.native_handle(), handle);
 }
 
@@ -150,7 +150,7 @@ TEST(result, for_result_and_reference_wrapper_of_result_should_move_in_to_out) {
 
     ozo::recv_result(result, oid_map, std::ref(out));
 
-    EXPECT_EQ(result.native_handle(), nullptr);
+    EXPECT_FALSE(result.valid());
     EXPECT_EQ(out.native_handle(), handle);
 }
 

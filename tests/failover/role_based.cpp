@@ -108,7 +108,7 @@ TEST(role_based_connection_provider__is_supported, should_return_false_for_conne
 
 TEST(role_based_connection_provider__rebind, should_call_source_rebind_and_return_new_provider_for_role) {
     role_based_connection_source_mock source;
-    boost::asio::io_service io;
+    boost::asio::io_context io;
     auto provider = ozo::failover::role_based_connection_provider{
                     role_based_connection_source<class dummy> {std::addressof(source)},
                     io
@@ -125,7 +125,7 @@ TEST(role_based_connection_provider__rebind, should_call_source_rebind_and_retur
 
 TEST(role_based_connection_provider__rebind, should_move_source_call_source_rebind_and_return_new_provider_for_role) {
     role_based_connection_source_mock source;
-    boost::asio::io_service io;
+    boost::asio::io_context io;
     auto provider = ozo::failover::role_based_connection_provider{
                     role_based_connection_source<class dummy> {std::addressof(source)},
                     io
@@ -146,7 +146,7 @@ using namespace std::literals;
 struct role_based_try__initiate_next_try : Test {
     StrictMock<connection_mock> conn;
     role_based_connection_source_mock source;
-    boost::asio::io_service io;
+    boost::asio::io_context io;
 
     auto provider() {
         return ozo::failover::role_based_connection_provider{
@@ -328,7 +328,7 @@ TEST_F(role_based_try__initiate_next_try, should_not_close_connection_on_no_retr
 
 struct role_based_try__get_context : Test {
     role_based_connection_source_mock source;
-    boost::asio::io_service io;
+    boost::asio::io_context io;
 
     auto provider() {
         return ozo::failover::role_based_connection_provider{

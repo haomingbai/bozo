@@ -239,6 +239,13 @@ struct async_get_result_op : boost::asio::coroutine {
             case PGRES_COPY_IN:
             case PGRES_COPY_BOTH:
             case PGRES_NONFATAL_ERROR:
+#ifdef LIBPQ_HAS_PIPELINING
+            case PGRES_PIPELINE_SYNC:
+            case PGRES_PIPELINE_ABORTED:
+#endif
+#ifdef LIBPQ_HAS_CHUNK_MODE
+            case PGRES_TUPLES_CHUNK:
+#endif
                 break;
         }
 

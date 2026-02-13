@@ -1,20 +1,29 @@
 find_program(CCACHE_FOUND ccache)
 
-include(ExternalProject)
-ExternalProject_Add(
-    GoogleTest
-    GIT_REPOSITORY "https://github.com/google/googletest.git"
-    GIT_TAG release-1.10.0
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
-    UPDATE_COMMAND ""
-    LOG_DOWNLOAD ON
-    LOG_CONFIGURE ON
-    LOG_BUILD ON
-)
-ExternalProject_Get_Property(GoogleTest source_dir)
-include_directories(SYSTEM "${source_dir}/include")
-include_directories(SYSTEM "${CMAKE_CURRENT_BINARY_DIR}/include")
-link_directories("${CMAKE_CURRENT_BINARY_DIR}/lib")
+find_package(GTest CONFIG QUIET)
+
+if (TARGET GTest::gtest AND TARGET GTest::gmock)
+    set(OZO_TEST_GTEST_TARGET GTest::gtest)
+    set(OZO_TEST_GMOCK_TARGET GTest::gmock)
+else()
+    include(ExternalProject)
+    ExternalProject_Add(
+        GoogleTest
+        GIT_REPOSITORY "https://github.com/google/googletest.git"
+        GIT_TAG release-1.10.0
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}
+        UPDATE_COMMAND ""
+        LOG_DOWNLOAD ON
+        LOG_CONFIGURE ON
+        LOG_BUILD ON
+    )
+    ExternalProject_Get_Property(GoogleTest source_dir)
+    include_directories(SYSTEM "${source_dir}/include")
+    include_directories(SYSTEM "${CMAKE_CURRENT_BINARY_DIR}/include")
+    link_directories("${CMAKE_CURRENT_BINARY_DIR}/lib")
+    set(OZO_TEST_GTEST_TARGET gtest)
+    set(OZO_TEST_GMOCK_TARGET gmock)
+endif()
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -76,9 +85,11 @@ if(OZO_BUILD_PG_TESTS)
 endif()
 
 add_executable(ozo_tests ${SOURCES})
-add_dependencies(ozo_tests GoogleTest)
-target_link_libraries(ozo_tests gtest)
-target_link_libraries(ozo_tests gmock)
+if (TARGET GoogleTest)
+    add_dependencies(ozo_tests GoogleTest)
+endif()
+target_link_libraries(ozo_tests ${OZO_TEST_GTEST_TARGET})
+target_link_libraries(ozo_tests ${OZO_TEST_GMOCK_TARGET})
 target_link_libraries(ozo_tests ozo)
 add_test(ozo_tests ozo_tests)
 

@@ -183,10 +183,19 @@ struct get_query_params_impl<query_builder<Ts...>> {
 
 namespace literals {
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+
 template <class CharT, CharT ... c>
 constexpr auto operator "" _SQL() {
     return make_query_builder(hana::make_tuple(make_query_text(hana::string<c ...>())));
 }
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 } // namespace literals
 } // namespace ozo
