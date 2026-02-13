@@ -1,8 +1,8 @@
-#include <ozo/connection_info.h>
-#include <ozo/connection_pool.h>
-#include <ozo/query_builder.h>
-#include <ozo/request.h>
-#include <ozo/shortcuts.h>
+#include <bozo/connection_info.h>
+#include <bozo/connection_pool.h>
+#include <bozo/query_builder.h>
+#include <bozo/request.h>
+#include <bozo/shortcuts.h>
 
 #include <boost/asio/spawn.hpp>
 
@@ -19,30 +19,30 @@ namespace asio = boost::asio;
 using namespace testing;
 
 TEST(connection_pool_integration, get_connection_twice_should_get_the_same) {
-    using namespace ozo::literals;
+    using namespace bozo::literals;
     using namespace std::chrono_literals;
 
-    ozo::io_context io;
-    ozo::connection_info conn_info(OZO_PG_TEST_CONNINFO);
-    ozo::connection_pool_config config;
+    bozo::io_context io;
+    bozo::connection_info conn_info(BOZO_PG_TEST_CONNINFO);
+    bozo::connection_pool_config config;
     config.capacity = 1;
     config.queue_capacity = 0;
-    ozo::connection_pool pool(conn_info, config, !ozo::thread_safe);
+    bozo::connection_pool pool(conn_info, config, !bozo::thread_safe);
 
     asio::spawn(io, [&] (asio::yield_context yield) {
         const auto get_pg_backend_pid = [&] (int& pg_backend_pid) {
-            ozo::rows_of<int> result;
-            ozo::error_code ec;
-            const auto conn = ozo::request(
+            bozo::rows_of<int> result;
+            bozo::error_code ec;
+            const auto conn = bozo::request(
                 pool[io],
                 "SELECT pg_backend_pid()"_SQL,
-                ozo::deadline(1s),
-                ozo::into(result),
+                bozo::deadline(1s),
+                bozo::into(result),
                 yield[ec]
             );
 
             ASSERT_FALSE(ec) << ec.message();
-            ASSERT_FALSE(ozo::is_null_recursive(conn));
+            ASSERT_FALSE(bozo::is_null_recursive(conn));
             ASSERT_EQ(1u, result.size());
 
             pg_backend_pid = std::get<0>(result[0]);
@@ -61,31 +61,31 @@ TEST(connection_pool_integration, get_connection_twice_should_get_the_same) {
 }
 
 TEST(connection_pool_integration, request_should_wait_until_connection_is_available) {
-    using namespace ozo::literals;
+    using namespace bozo::literals;
     using namespace std::chrono_literals;
 
-    ozo::io_context io;
-    ozo::connection_info conn_info(OZO_PG_TEST_CONNINFO);
-    ozo::connection_pool_config config;
+    bozo::io_context io;
+    bozo::connection_info conn_info(BOZO_PG_TEST_CONNINFO);
+    bozo::connection_pool_config config;
     config.capacity = 1;
     config.queue_capacity = 1;
-    ozo::connection_pool pool(conn_info, config, !ozo::thread_safe);
+    bozo::connection_pool pool(conn_info, config, !bozo::thread_safe);
     std::array<int, 2> pg_backend_pids {{0, 0}};
 
     for (auto& pg_backend_pid : pg_backend_pids) {
         asio::spawn(io, [&, pg_backend_pid = &pg_backend_pid] (asio::yield_context yield) {
-            ozo::rows_of<int> result;
-            ozo::error_code ec;
-            const auto conn = ozo::request(
+            bozo::rows_of<int> result;
+            bozo::error_code ec;
+            const auto conn = bozo::request(
                 pool[io],
                 "SELECT pg_backend_pid()"_SQL,
-                ozo::deadline(1s),
-                ozo::into(result),
+                bozo::deadline(1s),
+                bozo::into(result),
                 yield[ec]
             );
 
             ASSERT_FALSE(ec) << ec.message();
-            ASSERT_FALSE(ozo::is_null_recursive(conn));
+            ASSERT_FALSE(bozo::is_null_recursive(conn));
             ASSERT_EQ(1u, result.size());
 
             *pg_backend_pid = std::get<0>(result[0]);
@@ -99,15 +99,15 @@ TEST(connection_pool_integration, request_should_wait_until_connection_is_availa
 }
 
 TEST(connection_pool_integration, should_serve_concurrent_requests) {
-    using namespace ozo::literals;
+    using namespace bozo::literals;
     using namespace std::chrono_literals;
 
-    std::vector<ozo::io_context> ios(3);
-    ozo::connection_info conn_info(OZO_PG_TEST_CONNINFO);
-    ozo::connection_pool_config config;
+    std::vector<bozo::io_context> ios(3);
+    bozo::connection_info conn_info(BOZO_PG_TEST_CONNINFO);
+    bozo::connection_pool_config config;
     config.capacity = 1;
     config.queue_capacity = 2;
-    ozo::connection_pool pool(conn_info, config);
+    bozo::connection_pool pool(conn_info, config);
     std::vector<std::future<int>> futures;
 
     for (auto& io : ios) {
@@ -117,18 +117,18 @@ TEST(connection_pool_integration, should_serve_concurrent_requests) {
             int pg_backend_pid = 0;
 
             asio::spawn(io, [&] (asio::yield_context yield) {
-                ozo::rows_of<int> result;
-                ozo::error_code ec;
-                const auto conn = ozo::request(
+                bozo::rows_of<int> result;
+                bozo::error_code ec;
+                const auto conn = bozo::request(
                     pool[io],
                     "SELECT pg_backend_pid()"_SQL,
-                    ozo::deadline(1s),
-                    ozo::into(result),
+                    bozo::deadline(1s),
+                    bozo::into(result),
                     yield[ec]
                 );
 
                 ASSERT_FALSE(ec) << ec.message();
-                ASSERT_FALSE(ozo::is_null_recursive(conn));
+                ASSERT_FALSE(bozo::is_null_recursive(conn));
                 ASSERT_EQ(1u, result.size());
 
                 pg_backend_pid = std::get<0>(result[0]);

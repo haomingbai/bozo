@@ -1,7 +1,7 @@
 #include "test_asio.h"
 
-#include <ozo/connection.h>
-#include <ozo/ext/std/shared_ptr.h>
+#include <bozo/connection.h>
+#include <bozo/ext/std/shared_ptr.h>
 
 #include <boost/fusion/adapted/std_tuple.hpp>
 #include <boost/fusion/adapted/struct/define_struct.hpp>
@@ -17,10 +17,10 @@ namespace asio = boost::asio;
 namespace hana = boost::hana;
 
 using namespace testing;
-using namespace ozo::tests;
+using namespace bozo::tests;
 
-using ozo::error_code;
-using ozo::empty_oid_map;
+using bozo::error_code;
+using bozo::empty_oid_map;
 
 enum class native_handle { bad, good };
 
@@ -29,7 +29,7 @@ inline bool connection_status_bad(const native_handle* h) {
 }
 
 struct native_handle_mock {
-    MOCK_METHOD1(assign, void (ozo::error_code&));
+    MOCK_METHOD1(assign, void (bozo::error_code&));
     MOCK_METHOD0(release, void ());
 };
 
@@ -43,7 +43,7 @@ struct socket_mock {
         return io_->get_executor();
     }
 
-    void assign(std::shared_ptr<native_handle_mock> handle, ozo::error_code& ec) {
+    void assign(std::shared_ptr<native_handle_mock> handle, bozo::error_code& ec) {
         native_handle_ = std::move(handle);
         native_handle_->assign(ec);
     }
@@ -93,23 +93,23 @@ struct connection {
 
 } // namespace
 
-namespace ozo {
+namespace bozo {
 
 template <typename OidMap>
 struct is_connection<::connection<OidMap>> : std::true_type {};
 
-} // namespace ozo
+} // namespace bozo
 
 namespace {
 template <typename ...Ts>
 using connection_ptr = std::shared_ptr<connection<Ts...>>;
 
-static_assert(ozo::Connection<connection<>>,
+static_assert(bozo::Connection<connection<>>,
     "connection does not meet Connection requirements");
-static_assert(ozo::Connection<connection_ptr<>>,
+static_assert(bozo::Connection<connection_ptr<>>,
     "connection_ptr does not meet Connection requirements");
 
-static_assert(!ozo::Connection<int>,
+static_assert(!bozo::Connection<int>,
     "int meets Connection requirements unexpectedly");
 
 struct connection_good : Test {
@@ -119,18 +119,18 @@ struct connection_good : Test {
 TEST_F(connection_good, should_return_false_for_object_with_bad_handle) {
     auto conn = std::make_shared<connection<>>(io);
     *(conn->handle_) = native_handle::bad;
-    EXPECT_FALSE(ozo::connection_good(conn));
+    EXPECT_FALSE(bozo::connection_good(conn));
 }
 
 TEST_F(connection_good, should_return_false_for_object_with_nullptr) {
     connection_ptr<> conn;
-    EXPECT_FALSE(ozo::connection_good(conn));
+    EXPECT_FALSE(bozo::connection_good(conn));
 }
 
 TEST_F(connection_good, should_return_true_for_object_with_good_handle) {
     auto conn = std::make_shared<connection<>>(io);
     *(conn->handle_) = native_handle::good;
-    EXPECT_TRUE(ozo::connection_good(conn));
+    EXPECT_TRUE(bozo::connection_good(conn));
 }
 
 struct connection_bad : Test {
@@ -140,18 +140,18 @@ struct connection_bad : Test {
 TEST_F(connection_bad, should_return_true_for_object_with_bad_handle) {
     auto conn = std::make_shared<connection<>>(io);
     *(conn->handle_) = native_handle::bad;
-    EXPECT_TRUE(ozo::connection_bad(conn));
+    EXPECT_TRUE(bozo::connection_bad(conn));
 }
 
 TEST_F(connection_bad, should_return_true_for_object_with_nullptr) {
     connection_ptr<> conn;
-    EXPECT_TRUE(ozo::connection_bad(conn));
+    EXPECT_TRUE(bozo::connection_bad(conn));
 }
 
 TEST_F(connection_bad, should_return_false_for_object_with_good_handle) {
     auto conn = std::make_shared<connection<>>(io);
     *(conn->handle_) = native_handle::good;
-    EXPECT_FALSE(ozo::connection_bad(conn));
+    EXPECT_FALSE(bozo::connection_bad(conn));
 }
 
 TEST(unwrap_connection, should_return_connection_reference_for_connection_wrapper) {
@@ -159,7 +159,7 @@ TEST(unwrap_connection, should_return_connection_reference_for_connection_wrappe
     auto conn = std::make_shared<connection<>>(io);
 
     EXPECT_EQ(
-        std::addressof(ozo::unwrap_connection(conn)),
+        std::addressof(bozo::unwrap_connection(conn)),
         conn.get()
     );
 }
@@ -169,7 +169,7 @@ TEST(unwrap_connection, should_return_argument_reference_for_connection) {
     connection<> conn(io);
 
     EXPECT_EQ(
-        std::addressof(ozo::unwrap_connection(conn)),
+        std::addressof(bozo::unwrap_connection(conn)),
         std::addressof(conn)
     );
 }
@@ -179,7 +179,7 @@ TEST(get_error_context, should_returns_reference_to_error_context) {
     auto conn = std::make_shared<connection<>>(io);
 
     EXPECT_EQ(
-        std::addressof(ozo::get_error_context(conn)),
+        std::addressof(bozo::get_error_context(conn)),
         std::addressof(conn->error_context_)
     );
 }
@@ -200,7 +200,7 @@ TEST_F(async_get_connection, should_pass_through_the_connection_to_handler) {
     EXPECT_CALL(cb_io.executor_, dispatch(_)).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(cb_mock, call(error_code{}, conn)).WillOnce(Return());
 
-    ozo::async_get_connection(conn, ozo::none, wrap(cb_mock));
+    bozo::async_get_connection(conn, bozo::none, wrap(cb_mock));
 }
 
 TEST_F(async_get_connection, should_reset_connection_error_context) {
@@ -209,7 +209,7 @@ TEST_F(async_get_connection, should_reset_connection_error_context) {
 
     EXPECT_CALL(io.executor_, dispatch(_)).WillOnce(InvokeArgument<0>());
 
-    ozo::async_get_connection(conn, ozo::none, [](error_code, auto conn) {
+    bozo::async_get_connection(conn, bozo::none, [](error_code, auto conn) {
         EXPECT_TRUE(conn->error_context_.empty());
     });
 }
@@ -223,25 +223,25 @@ struct fake_native_pq_handle {
 
 TEST(connection_error_message, should_trim_trailing_soaces){
     fake_native_pq_handle handle{"error message with trailing spaces   "};
-    EXPECT_EQ(std::string(ozo::detail::connection_error_message(handle)),
+    EXPECT_EQ(std::string(bozo::detail::connection_error_message(handle)),
         "error message with trailing spaces");
 }
 
 TEST(connection_error_message, should_preserve_string_without_trailing_spaces){
     fake_native_pq_handle handle{"error message without trailing spaces"};
-    EXPECT_EQ(std::string(ozo::detail::connection_error_message(handle)),
+    EXPECT_EQ(std::string(bozo::detail::connection_error_message(handle)),
         "error message without trailing spaces");
 }
 
 TEST(connection_error_message, should_preserve_empty_string){
     fake_native_pq_handle handle{""};
-    EXPECT_EQ(std::string(ozo::detail::connection_error_message(handle)),
+    EXPECT_EQ(std::string(bozo::detail::connection_error_message(handle)),
         "");
 }
 
 TEST(connection_error_message, should_return_empty_string_for_string_of_spaces){
     fake_native_pq_handle handle{"    "};
-    EXPECT_EQ(std::string(ozo::detail::connection_error_message(handle)),
+    EXPECT_EQ(std::string(bozo::detail::connection_error_message(handle)),
         "");
 }
 
@@ -250,11 +250,11 @@ static const char* PQerrorMessage(const native_handle*) {
 }
 
 TEST(error_message, should_return_empty_string_view_for_nullable_connection_in_null_state){
-    EXPECT_EQ(std::string(ozo::error_message(connection_ptr<>{})), "");
+    EXPECT_EQ(std::string(bozo::error_message(connection_ptr<>{})), "");
 }
 
 TEST(ConnectionProvider, should_return_false_for_non_connection_provider_type){
-    EXPECT_FALSE(ozo::ConnectionProvider<int>);
+    EXPECT_FALSE(bozo::ConnectionProvider<int>);
 }
 
 static const char* PQdb(const native_handle* h) {
@@ -263,14 +263,14 @@ static const char* PQdb(const native_handle* h) {
 
 TEST(get_database, should_return_PQdb_call_result){
     io_context io;
-    EXPECT_EQ(std::string(ozo::get_database(connection<>{io})), "PQdb");
+    EXPECT_EQ(std::string(bozo::get_database(connection<>{io})), "PQdb");
 }
 
 TEST(get_database, should_return_empty_string_view_for_null_handle){
     io_context io;
     connection<> conn{io};
     conn.handle_.reset();
-    EXPECT_TRUE(ozo::get_database(conn).empty());
+    EXPECT_TRUE(bozo::get_database(conn).empty());
 }
 
 static const char* PQhost(const native_handle* h) {
@@ -279,14 +279,14 @@ static const char* PQhost(const native_handle* h) {
 
 TEST(get_host, should_return_PQhost_call_result){
     io_context io;
-    EXPECT_EQ(std::string(ozo::get_host(connection<>{io})), "PQhost");
+    EXPECT_EQ(std::string(bozo::get_host(connection<>{io})), "PQhost");
 }
 
 TEST(get_host, should_return_empty_string_view_for_null_handle){
     io_context io;
     connection<> conn{io};
     conn.handle_.reset();
-    EXPECT_TRUE(ozo::get_host(conn).empty());
+    EXPECT_TRUE(bozo::get_host(conn).empty());
 }
 
 static const char* PQport(const native_handle* h) {
@@ -295,14 +295,14 @@ static const char* PQport(const native_handle* h) {
 
 TEST(get_port, should_return_PQport_call_result){
     io_context io;
-    EXPECT_EQ(std::string(ozo::get_port(connection<>{io})), "PQport");
+    EXPECT_EQ(std::string(bozo::get_port(connection<>{io})), "PQport");
 }
 
 TEST(get_port, should_return_empty_string_view_for_null_handle){
     io_context io;
     connection<> conn{io};
     conn.handle_.reset();
-    EXPECT_TRUE(ozo::get_port(conn).empty());
+    EXPECT_TRUE(bozo::get_port(conn).empty());
 }
 
 static const char* PQuser(const native_handle* h) {
@@ -311,14 +311,14 @@ static const char* PQuser(const native_handle* h) {
 
 TEST(get_user, should_return_PQport_call_result){
     io_context io;
-    EXPECT_EQ(std::string(ozo::get_user(connection<>{io})), "PQuser");
+    EXPECT_EQ(std::string(bozo::get_user(connection<>{io})), "PQuser");
 }
 
 TEST(get_user, should_return_empty_string_view_for_null_handle){
     io_context io;
     connection<> conn{io};
     conn.handle_.reset();
-    EXPECT_TRUE(ozo::get_user(conn).empty());
+    EXPECT_TRUE(bozo::get_user(conn).empty());
 }
 
 static const char* PQpass(const native_handle* h) {
@@ -327,14 +327,14 @@ static const char* PQpass(const native_handle* h) {
 
 TEST(get_password, should_return_PQport_call_result){
     io_context io;
-    EXPECT_EQ(std::string(ozo::get_password(connection<>{io})), "PQpass");
+    EXPECT_EQ(std::string(bozo::get_password(connection<>{io})), "PQpass");
 }
 
 TEST(get_password, should_return_empty_string_view_for_null_handle){
     io_context io;
     connection<> conn{io};
     conn.handle_.reset();
-    EXPECT_TRUE(ozo::get_password(conn).empty());
+    EXPECT_TRUE(bozo::get_password(conn).empty());
 }
 
 } //namespace

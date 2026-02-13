@@ -3,8 +3,8 @@ find_program(CCACHE_FOUND ccache)
 find_package(GTest CONFIG QUIET)
 
 if (TARGET GTest::gtest AND TARGET GTest::gmock)
-    set(OZO_TEST_GTEST_TARGET GTest::gtest)
-    set(OZO_TEST_GMOCK_TARGET GTest::gmock)
+    set(BOZO_TEST_GTEST_TARGET GTest::gtest)
+    set(BOZO_TEST_GMOCK_TARGET GTest::gmock)
 else()
     include(ExternalProject)
     ExternalProject_Add(
@@ -21,8 +21,8 @@ else()
     include_directories(SYSTEM "${source_dir}/include")
     include_directories(SYSTEM "${CMAKE_CURRENT_BINARY_DIR}/include")
     link_directories("${CMAKE_CURRENT_BINARY_DIR}/lib")
-    set(OZO_TEST_GTEST_TARGET gtest)
-    set(OZO_TEST_GMOCK_TARGET gmock)
+    set(BOZO_TEST_GTEST_TARGET gtest)
+    set(BOZO_TEST_GMOCK_TARGET gmock)
 endif()
 
 include_directories("${CMAKE_CURRENT_SOURCE_DIR}")
@@ -68,7 +68,7 @@ set(SOURCES
     main.cpp
 )
 
-if(OZO_BUILD_PG_TESTS)
+if(BOZO_BUILD_PG_TESTS)
     set(SOURCES
         ${SOURCES}
         integration/result_integration.cpp
@@ -81,38 +81,38 @@ if(OZO_BUILD_PG_TESTS)
         integration/role_based_integration.cpp
         integration/connection_pool_integration.cpp
     )
-    add_definitions(-DOZO_PG_TEST_CONNINFO="${OZO_PG_TEST_CONNINFO}")
+    add_definitions(-DBOZO_PG_TEST_CONNINFO="${BOZO_PG_TEST_CONNINFO}")
 endif()
 
-add_executable(ozo_tests ${SOURCES})
+add_executable(bozo_tests ${SOURCES})
 if (TARGET GoogleTest)
-    add_dependencies(ozo_tests GoogleTest)
+    add_dependencies(bozo_tests GoogleTest)
 endif()
-target_link_libraries(ozo_tests ${OZO_TEST_GTEST_TARGET})
-target_link_libraries(ozo_tests ${OZO_TEST_GMOCK_TARGET})
-target_link_libraries(ozo_tests ozo)
-add_test(ozo_tests ozo_tests)
+target_link_libraries(bozo_tests ${BOZO_TEST_GTEST_TARGET})
+target_link_libraries(bozo_tests ${BOZO_TEST_GMOCK_TARGET})
+target_link_libraries(bozo_tests bozo)
+add_test(bozo_tests bozo_tests)
 
 if(CCACHE_FOUND)
-    set_target_properties(ozo_tests PROPERTIES RULE_LAUNCH_COMPILE ccache)
-    set_target_properties(ozo_tests PROPERTIES RULE_LAUNCH_LINK ccache)
+    set_target_properties(bozo_tests PROPERTIES RULE_LAUNCH_COMPILE ccache)
+    set_target_properties(bozo_tests PROPERTIES RULE_LAUNCH_LINK ccache)
 endif()
 
 # enable useful warnings and errors
-target_compile_options(ozo_tests PRIVATE -Wall -Wextra -pedantic -Werror)
+target_compile_options(bozo_tests PRIVATE -Wall -Wextra -pedantic -Werror)
 
 # ignore specific errors for clang
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    target_compile_options(ozo_tests PRIVATE -Wno-ignored-optimization-argument)
+    target_compile_options(bozo_tests PRIVATE -Wno-ignored-optimization-argument)
 endif()
 
-if(OZO_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
+if(BOZO_COVERAGE AND CMAKE_COMPILER_IS_GNUCXX)
     include(CodeCoverage)
     APPEND_COVERAGE_COMPILER_FLAGS()
     set(COVERAGE_EXCLUDES "'.*/(tests|contrib|gmock|gtest)/.*'")
     SETUP_TARGET_FOR_COVERAGE_GCOVR(
-        NAME ozo_coverage
+        NAME bozo_coverage
         EXECUTABLE ctest -V
-        DEPENDENCIES ozo_tests
+        DEPENDENCIES bozo_tests
     )
 endif()

@@ -1,8 +1,8 @@
 #include "connection_mock.h"
 #include "test_error.h"
 
-#include <ozo/connection_info.h>
-#include <ozo/connection_pool.h>
+#include <bozo/connection_info.h>
+#include <bozo/connection_pool.h>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -11,24 +11,24 @@ namespace {
 
 TEST(make_connection_pool, should_not_throw) {
     boost::asio::io_context io;
-    ozo::connection_info conn_info("conn info string");
-    const ozo::connection_pool_config config;
-    EXPECT_NO_THROW(ozo::make_connection_pool(conn_info, config));
+    bozo::connection_info conn_info("conn info string");
+    const bozo::connection_pool_config config;
+    EXPECT_NO_THROW(bozo::make_connection_pool(conn_info, config));
 }
 
 } //namespace
 
-namespace ozo::tests {
+namespace bozo::tests {
 
 struct pool_handle_mock {
     struct value_type {
         using native_handle_type = PGconn_mock*;
         using oid_map_type = empty_oid_map;
         using error_context_type = std::string;
-        using statistics_type = ozo::none_t;
+        using statistics_type = bozo::none_t;
 
         native_conn_handle safe_handle_;
-        ozo::empty_oid_map oid_map_;
+        bozo::empty_oid_map oid_map_;
         error_context_type error_context_;
 
         const native_conn_handle& safe_native_handle() const & {return safe_handle_;}
@@ -36,7 +36,7 @@ struct pool_handle_mock {
 
         const oid_map_type& oid_map() const & {return oid_map_;}
 
-        const statistics_type& statistics() const & {return ozo::none;}
+        const statistics_type& statistics() const & {return bozo::none;}
         template <typename Key, typename Value>
         void update_statistics(const Key&, Value&&) noexcept {
             static_assert(std::is_void_v<Key>, "update_statistics is not supperted");
@@ -101,20 +101,20 @@ struct connection_source {
 
     template <typename IoContext, typename TimeConstraint, typename Handler>
     void operator()(IoContext&, TimeConstraint&&, Handler&& h) const {
-        mock_->async_get_connection(ozo::detail::make_copyable(std::forward<Handler>(h)));
+        mock_->async_get_connection(bozo::detail::make_copyable(std::forward<Handler>(h)));
     }
 };
-} // namespace ozo::tests
+} // namespace bozo::tests
 
-namespace ozo {
+namespace bozo {
 template <>
-class connection_pool<ozo::tests::connection_source> {
+class connection_pool<bozo::tests::connection_source> {
 public:
-    using connection_type = std::shared_ptr<ozo::pooled_connection<ozo::tests::connection_pool::handle, ozo::tests::executor>>;
+    using connection_type = std::shared_ptr<bozo::pooled_connection<bozo::tests::connection_pool::handle, bozo::tests::executor>>;
 };
 
 template <>
-struct unwrap_impl<ozo::tests::connection_pool::handle> {
+struct unwrap_impl<bozo::tests::connection_pool::handle> {
     template <typename T>
     static constexpr decltype(auto) apply(T&& handle) {
         return *handle;
@@ -123,23 +123,23 @@ struct unwrap_impl<ozo::tests::connection_pool::handle> {
 
 namespace detail {
 template <>
-struct connection_stream<ozo::tests::executor> {
-    using type = ozo::tests::stream_descriptor;
+struct connection_stream<bozo::tests::executor> {
+    using type = bozo::tests::stream_descriptor;
 
-    static type get(const ozo::tests::executor& ex, type::native_handle_type fd) {
+    static type get(const bozo::tests::executor& ex, type::native_handle_type fd) {
         return type{ex.context(), fd};
     }
 
-    static type get(const ozo::tests::executor& ex) {
+    static type get(const bozo::tests::executor& ex) {
         return type{ex.context()};
     }
 };
 } // namespace detail
-} // namespace ozo
+} // namespace bozo
 
 namespace {
 
-using namespace ozo::tests;
+using namespace bozo::tests;
 using namespace testing;
 
 struct pooled_connection : Test {
@@ -149,9 +149,9 @@ struct pooled_connection : Test {
     StrictMock<stream_descriptor_mock> socket {};
 
     StrictMock<PGconn_mock> conn_handle;
-    pool_handle_mock::value_type value{std::addressof(conn_handle), ozo::empty_oid_map{}, ""};
+    pool_handle_mock::value_type value{std::addressof(conn_handle), bozo::empty_oid_map{}, ""};
 
-    using impl = ozo::pooled_connection<ozo::tests::connection_pool::handle, ozo::tests::executor>;
+    using impl = bozo::pooled_connection<bozo::tests::connection_pool::handle, bozo::tests::executor>;
 
 };
 
@@ -236,7 +236,7 @@ TEST_F(pooled_connection, should_not_check_connection_status_and_call_waste_on_d
 }
 
 struct pooled_connection_wrapper : Test {
-    using pooled_connection_ptr = std::shared_ptr<ozo::pooled_connection<ozo::tests::connection_pool::handle, ozo::tests::executor>>;
+    using pooled_connection_ptr = std::shared_ptr<bozo::pooled_connection<bozo::tests::connection_pool::handle, bozo::tests::executor>>;
     StrictMock<connection_source_mock> provider_mock;
     StrictMock<callback_gmock<pooled_connection_ptr>> callback_mock;
     StrictMock<connection_gmock> connection_mock{};
@@ -251,27 +251,27 @@ struct pooled_connection_wrapper : Test {
     }
 
     auto wrap_pooled_connection_handler() {
-        return ozo::detail::wrap_pooled_connection_handler(
+        return bozo::detail::wrap_pooled_connection_handler(
             io.get_executor(),
             connection_source{&provider_mock},
-            ozo::none,
+            bozo::none,
             wrap(callback_mock)
         );
     }
 
     auto make_connection() {
-        return std::make_shared<ozo::tests::connection<>>(connection<>{
+        return std::make_shared<bozo::tests::connection<>>(connection<>{
             std::addressof(native_handle), {}, &connection_mock, {}, &io});
     }
 };
 
-using ozo::error_code;
+using bozo::error_code;
 
 TEST_F(pooled_connection_wrapper, should_be_copyable_with_non_copyable_handler_for_resource_pool_compatibility) {
-    auto h = ozo::detail::wrap_pooled_connection_handler(
+    auto h = bozo::detail::wrap_pooled_connection_handler(
             io.get_executor(),
             connection_source{&provider_mock},
-            ozo::none,
+            bozo::none,
             [&, attr = std::unique_ptr<int>()](error_code ec, auto& conn) mutable { callback_mock.call(ec, conn); }
         );
 
@@ -320,7 +320,7 @@ TEST_F(pooled_connection_wrapper, should_call_async_get_connection_and_invoke_ha
     EXPECT_CALL(native_handle, PQsocket()).InSequence(s).WillOnce(Return(42));
     EXPECT_CALL(stream, assign(42)).InSequence(s);
 
-    EXPECT_CALL(callback_mock, call(ozo::error_code{}, _))
+    EXPECT_CALL(callback_mock, call(bozo::error_code{}, _))
         .InSequence(s)
         .WillOnce(Return());
 
@@ -349,7 +349,7 @@ TEST_F(pooled_connection_wrapper, should_call_async_get_connection_and_invoke_ha
     EXPECT_CALL(native_handle, PQsocket()).InSequence(s).WillOnce(Return(42));
     EXPECT_CALL(stream, assign(42)).InSequence(s);
 
-    EXPECT_CALL(callback_mock, call(ozo::error_code{}, _))
+    EXPECT_CALL(callback_mock, call(bozo::error_code{}, _))
         .InSequence(s)
         .WillOnce(Return());
 

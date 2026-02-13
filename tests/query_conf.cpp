@@ -1,4 +1,4 @@
-#include <ozo/query_conf.h>
+#include <bozo/query_conf.h>
 
 #include <boost/hana/adapt_struct.hpp>
 #include <boost/hana/contains.hpp>
@@ -11,7 +11,7 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-namespace ozo {
+namespace bozo {
 namespace detail {
 
 static bool operator ==(const query_text_part& lhs, const query_text_part& rhs) {
@@ -158,70 +158,70 @@ struct require_copy_struct_query {
 };
 
 } // namespace tests
-} // namespace ozo
+} // namespace bozo
 
 BOOST_HANA_ADAPT_STRUCT(
-    ozo::tests::struct_parameters,
+    bozo::tests::struct_parameters,
     string,
     number
 );
 
 BOOST_HANA_ADAPT_STRUCT(
-    ozo::tests::non_default_constructible_struct_parameters,
+    bozo::tests::non_default_constructible_struct_parameters,
     string,
     number
 );
 
 BOOST_HANA_ADAPT_STRUCT(
-    ozo::tests::prohibit_copy_struct,
+    bozo::tests::prohibit_copy_struct,
     v
 );
 
 BOOST_HANA_ADAPT_STRUCT(
-    ozo::tests::require_copy_struct,
+    bozo::tests::require_copy_struct,
     v
 );
 
 namespace {
 
 using namespace testing;
-using namespace ozo::tests;
+using namespace bozo::tests;
 
 namespace hana = boost::hana;
 
-using namespace ozo::detail;
-using namespace ozo::detail::text_parser;
+using namespace bozo::detail;
+using namespace bozo::detail::text_parser;
 
 using qtp = query_text_part;
 using qpn = query_parameter_name;
 
 TEST(parse_query_conf, should_for_empty_const_char_array_return_empty_description) {
-    EXPECT_THAT(ozo::detail::parse_query_conf(""), ElementsAre());
+    EXPECT_THAT(bozo::detail::parse_query_conf(""), ElementsAre());
 }
 
 TEST(parse_query_conf, should_for_empty_std_string_view_returns_empty_description) {
-    EXPECT_THAT(ozo::detail::parse_query_conf(std::string_view("")), ElementsAre());
+    EXPECT_THAT(bozo::detail::parse_query_conf(std::string_view("")), ElementsAre());
 }
 
 TEST(parse_query_conf, should_for_empty_std_string_returns_empty_descriptions) {
-    EXPECT_THAT(ozo::detail::parse_query_conf(std::string("")), ElementsAre());
+    EXPECT_THAT(bozo::detail::parse_query_conf(std::string("")), ElementsAre());
 }
 
 TEST(parse_query_conf, should_for_empty_iterators_range_return_empty_description) {
     const std::string_view content("");
-    EXPECT_THAT(ozo::detail::parse_query_conf(content.begin(), content.end()), ElementsAre());
+    EXPECT_THAT(bozo::detail::parse_query_conf(content.begin(), content.end()), ElementsAre());
 }
 
 TEST(parse_query_conf, should_for_invalid_input_throw_exception) {
     EXPECT_THROW(
-        ozo::detail::parse_query_conf(std::string("foo")),
+        bozo::detail::parse_query_conf(std::string("foo")),
         std::invalid_argument
     );
 }
 
 TEST(parse_query_conf, should_for_one_query_statement_return_one_parsed_query) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query without parameters\n"
             "SELECT 1"
         ),
@@ -231,7 +231,7 @@ TEST(parse_query_conf, should_for_one_query_statement_return_one_parsed_query) {
 
 TEST(parse_query_conf, should_for_two_query_statements_return_two_parsed_queries) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query without parameters\n"
             "SELECT 1\n"
             "-- name: query without parameters 2\n"
@@ -246,7 +246,7 @@ TEST(parse_query_conf, should_for_two_query_statements_return_two_parsed_queries
 
 TEST(parse_query_conf, should_for_two_query_statements_with_multiline_separator_return_two_parsed_queries) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query without parameters\n"
             "SELECT 1\n\n\n"
             "-- name: query without parameters 2\n"
@@ -261,7 +261,7 @@ TEST(parse_query_conf, should_for_two_query_statements_with_multiline_separator_
 
 TEST(parse_query_conf, should_for_one_query_statement_with_one_parameter_returns_parsed_query_into_text_parts_and_parameter) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query with one parameter\n"
             "SELECT :0"
         ),
@@ -271,7 +271,7 @@ TEST(parse_query_conf, should_for_one_query_statement_with_one_parameter_returns
 
 TEST(parse_query_conf, should_support_parameters_name_with_ascii_letters_number_and_underscore) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query with one parameter\n"
             "SELECT :abcXYZ_012"
         ),
@@ -281,7 +281,7 @@ TEST(parse_query_conf, should_support_parameters_name_with_ascii_letters_number_
 
 TEST(parse_query_conf, should_for_one_query_statement_with_parameters_return_parsed_query_with_parameters) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query with one parameter\n"
             "SELECT :a + :b"
         ),
@@ -291,7 +291,7 @@ TEST(parse_query_conf, should_for_one_query_statement_with_parameters_return_par
 
 TEST(parse_query_conf, should_for_one_query_with_a_parameter_and_explicit_cast_return_parsed_query_with_cast) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query with one parameter\n"
             "SELECT :a::integer"
         ),
@@ -301,7 +301,7 @@ TEST(parse_query_conf, should_for_one_query_with_a_parameter_and_explicit_cast_r
 
 TEST(parse_query_conf, should_for_query_containing_eol_return_same_text) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query without parameters\n"
             "SELECT\n1"
         ),
@@ -311,7 +311,7 @@ TEST(parse_query_conf, should_for_query_containing_eol_return_same_text) {
 
 TEST(parse_query_conf, should_for_two_queries_containing_eol_return_same_text) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query without parameters\n"
             "SELECT\n1\n"
             "-- name: query without parameters 2\n"
@@ -326,7 +326,7 @@ TEST(parse_query_conf, should_for_two_queries_containing_eol_return_same_text) {
 
 TEST(parse_query_conf, should_for_comment_in_query_statement_text_return_text_without) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query without parameters\n"
             "SELECT\n"
             "-- comment\n"
@@ -340,7 +340,7 @@ TEST(parse_query_conf, should_for_comment_in_query_statement_text_return_text_wi
 
 TEST(parse_query_conf, should_support_assignment_operator) {
     EXPECT_THAT(
-        ozo::detail::parse_query_conf(
+        bozo::detail::parse_query_conf(
             "-- name: query with one parameter\n"
             "SELECT function(a := :a)"
         ),
@@ -349,21 +349,21 @@ TEST(parse_query_conf, should_support_assignment_operator) {
 }
 
 TEST(check_for_duplicates, should_not_throw_for_empty_queries) {
-    EXPECT_NO_THROW(ozo::detail::check_for_duplicates(hana::tuple<>()));
+    EXPECT_NO_THROW(bozo::detail::check_for_duplicates(hana::tuple<>()));
 }
 
 TEST(check_for_duplicates, should_not_throw_for_single_query) {
-    EXPECT_NO_THROW(ozo::detail::check_for_duplicates(hana::tuple<query_without_parameters>()));
+    EXPECT_NO_THROW(bozo::detail::check_for_duplicates(hana::tuple<query_without_parameters>()));
 }
 
 TEST(check_for_duplicates, should_not_throw_for_two_different_queries) {
     const hana::tuple<query_without_parameters, query_without_parameters_2> queries;
-    EXPECT_NO_THROW(ozo::detail::check_for_duplicates(queries));
+    EXPECT_NO_THROW(bozo::detail::check_for_duplicates(queries));
 }
 
 TEST(check_for_duplicates, should_throw_for_two_equal_queries) {
     const hana::tuple<query_without_parameters, query_without_parameters> queries;
-    EXPECT_THROW(ozo::detail::check_for_duplicates(queries), std::invalid_argument);
+    EXPECT_THROW(bozo::detail::check_for_duplicates(queries), std::invalid_argument);
 }
 
 TEST(check_for_duplicates, should_throw_for_multiple_queries_with_two_equal) {
@@ -375,27 +375,27 @@ TEST(check_for_duplicates, should_throw_for_multiple_queries_with_two_equal) {
         query_with_typo_in_name,
         query_with_one_parameter
     >();
-    EXPECT_THROW(ozo::detail::check_for_duplicates(queries), std::invalid_argument);
+    EXPECT_THROW(bozo::detail::check_for_duplicates(queries), std::invalid_argument);
 }
 
 TEST(check_for_duplicates, should_return_empty_set_for_empty_queries) {
-    const auto result = ozo::detail::check_for_duplicates({});
+    const auto result = bozo::detail::check_for_duplicates({});
     EXPECT_THAT(result, UnorderedElementsAre());
 }
 
 TEST(check_for_duplicates, should_return_empty_set_with_query_name_for_one_query) {
     const std::vector<parsed_query> queries({parsed_query {"name", {}}});
-    EXPECT_THAT(ozo::detail::check_for_duplicates(queries), UnorderedElementsAre("name"));
+    EXPECT_THAT(bozo::detail::check_for_duplicates(queries), UnorderedElementsAre("name"));
 }
 
 TEST(check_for_duplicates, should_return_empty_set_with_queries_names_for_two_different_queries) {
     const std::vector<parsed_query> queries({parsed_query {"foo", {}}, parsed_query {"bar", {}}});
-    EXPECT_THAT(ozo::detail::check_for_duplicates(queries), UnorderedElementsAre("foo", "bar"));
+    EXPECT_THAT(bozo::detail::check_for_duplicates(queries), UnorderedElementsAre("foo", "bar"));
 }
 
 TEST(check_for_duplicates, should_throw_exception_for_two_equal_queries) {
     const std::vector<parsed_query> queries({parsed_query {"foo", {}}, parsed_query {"foo", {}}});
-    EXPECT_THROW(ozo::detail::check_for_duplicates(queries), std::invalid_argument);
+    EXPECT_THROW(bozo::detail::check_for_duplicates(queries), std::invalid_argument);
 }
 
 TEST(check_for_duplicates, should_throw_exception_for_multiple_queries_with_two_equal) {
@@ -405,33 +405,33 @@ TEST(check_for_duplicates, should_throw_exception_for_multiple_queries_with_two_
         parsed_query {"baz", {}},
         parsed_query {"foo", {}},
     });
-    EXPECT_THROW(ozo::detail::check_for_duplicates(queries), std::invalid_argument);
+    EXPECT_THROW(bozo::detail::check_for_duplicates(queries), std::invalid_argument);
 }
 
 TEST(check_for_duplicates, should_not_throw_for_empty_declarations_and_definitions) {
     const hana::tuple<> declarations;
     const std::unordered_set<std::string_view> definitions;
-    EXPECT_NO_THROW(ozo::detail::check_for_undefined(declarations, definitions));
+    EXPECT_NO_THROW(bozo::detail::check_for_undefined(declarations, definitions));
 }
 
 TEST(check_for_duplicates, should_throw_for_not_empty_declarations_and_empty_definitions) {
     const hana::tuple<query_without_parameters> declarations;
     const std::unordered_set<std::string_view> definitions;
-    EXPECT_THROW(ozo::detail::check_for_undefined(declarations, definitions), std::invalid_argument);
+    EXPECT_THROW(bozo::detail::check_for_undefined(declarations, definitions), std::invalid_argument);
 }
 
 TEST(check_for_duplicates, should_not_throw_for_empty_declarations_and_not_empty_definitions) {
     const hana::tuple<> declarations;
     std::string name("foo");
     const std::unordered_set<std::string_view> definitions({name});
-    EXPECT_NO_THROW(ozo::detail::check_for_undefined(declarations, definitions));
+    EXPECT_NO_THROW(bozo::detail::check_for_undefined(declarations, definitions));
 }
 
 TEST(check_for_duplicates, should_not_throw_for_matching_declarations_and_definitions) {
     const hana::tuple<query_without_parameters> declarations;
     std::string name("query without parameters");
     const std::unordered_set<std::string_view> definitions({name});
-    EXPECT_NO_THROW(ozo::detail::check_for_undefined(declarations, definitions));
+    EXPECT_NO_THROW(bozo::detail::check_for_undefined(declarations, definitions));
 }
 
 
@@ -493,7 +493,7 @@ TEST(query_part_visitor, should_throw_with_with_undeclared_named_parameter) {
 TEST(make_query_description, should_set_name_and_concat_text_into_string_for_single_query) {
     const query_with_one_parameter query;
     const parsed_query parsed {"query with one parameter", {query_text_part {"SELECT "}, query_parameter_name {"0"}}};
-    const auto result = ozo::detail::make_query_description(query, parsed);
+    const auto result = bozo::detail::make_query_description(query, parsed);
     EXPECT_EQ(result.name, "query with one parameter");
     EXPECT_EQ(result.text, "SELECT $1");
 }
@@ -506,7 +506,7 @@ TEST(make_query_description, should_trim_query_text_for_single_query) {
         query_parameter_name {"0"},
         query_text_part {"\t \n"}},
     };
-    const auto result = ozo::detail::make_query_description(query, parsed);
+    const auto result = bozo::detail::make_query_description(query, parsed);
     EXPECT_EQ(result.name, "query with one parameter");
     EXPECT_EQ(result.text, "SELECT $1");
 }
@@ -514,7 +514,7 @@ TEST(make_query_description, should_trim_query_text_for_single_query) {
 TEST(make_query_description, should_set_name_and_concat_text_into_string_for_multiply_queries) {
     const hana::tuple<query_with_struct_parameters, query_with_one_parameter> queries;
     const parsed_query parsed {"query with one parameter", {query_text_part {"SELECT "}, query_parameter_name {"0"}}};
-    const auto result = ozo::detail::make_query_description(queries, parsed);
+    const auto result = bozo::detail::make_query_description(queries, parsed);
     EXPECT_EQ(result.name, "query with one parameter");
     EXPECT_EQ(result.text, "SELECT $1");
 }
@@ -522,7 +522,7 @@ TEST(make_query_description, should_set_name_and_concat_text_into_string_for_mul
 TEST(make_query_description, should_thow_for_parsed_query_name_not_present_in_queries) {
     const hana::tuple<query_with_struct_parameters, query_with_one_parameter> queries;
     const parsed_query parsed {"foo", {}};
-    EXPECT_THROW(ozo::detail::make_query_description(queries, parsed), std::invalid_argument);
+    EXPECT_THROW(bozo::detail::make_query_description(queries, parsed), std::invalid_argument);
 }
 
 
@@ -535,7 +535,7 @@ TEST(make_query_descriptions, should_set_name_and_concat_text_into_string_for_ea
         parsed_query {"query with one parameter", {qtp {"SELECT "}, qpn {"0"}}},
         parsed_query {"query with struct parameters", {qtp {"SELECT "}, qpn {"string"}, qtp {", "}, qpn {"number"}}},
     });
-    const auto result = ozo::detail::make_query_descriptions(queries, parsed);
+    const auto result = bozo::detail::make_query_descriptions(queries, parsed);
     EXPECT_THAT(result, ElementsAre(
         query_description {"query with one parameter", "SELECT $1"},
         query_description {"query with struct parameters", "SELECT $1, $2"}
@@ -544,18 +544,18 @@ TEST(make_query_descriptions, should_set_name_and_concat_text_into_string_for_ea
 
 
 TEST(make_query_conf, should_return_empty_descriptions_and_querie_for_empty_data) {
-    const auto result = ozo::detail::make_query_conf({});
+    const auto result = bozo::detail::make_query_conf({});
     EXPECT_THAT(result->descriptions, ElementsAre());
     EXPECT_THAT(result->queries, ElementsAre());
 }
 
 TEST(make_query_conf, should_return_one_description_and_one_query_for_one_description) {
-    const auto result = ozo::detail::make_query_conf({
-        ozo::detail::query_description {"query without parameters", "SELECT 1"},
+    const auto result = bozo::detail::make_query_conf({
+        bozo::detail::query_description {"query without parameters", "SELECT 1"},
     });
     EXPECT_THAT(
         result->descriptions,
-        ElementsAre(ozo::detail::query_description {"query without parameters", "SELECT 1"})
+        ElementsAre(bozo::detail::query_description {"query without parameters", "SELECT 1"})
     );
     EXPECT_THAT(
         result->queries,
@@ -564,15 +564,15 @@ TEST(make_query_conf, should_return_one_description_and_one_query_for_one_descri
 }
 
 TEST(make_query_conf, should_return_two_descriptions_and_two_queries_for_two_descriptions_with_different_names) {
-    const auto result = ozo::detail::make_query_conf({
-        ozo::detail::query_description {"query without parameters 1", "SELECT 1"},
-        ozo::detail::query_description {"query without parameters 2", "SELECT 2"},
+    const auto result = bozo::detail::make_query_conf({
+        bozo::detail::query_description {"query without parameters 1", "SELECT 1"},
+        bozo::detail::query_description {"query without parameters 2", "SELECT 2"},
     });
     EXPECT_THAT(
         result->descriptions,
         ElementsAre(
-            ozo::detail::query_description {"query without parameters 1", "SELECT 1"},
-            ozo::detail::query_description {"query without parameters 2", "SELECT 2"}
+            bozo::detail::query_description {"query without parameters 1", "SELECT 1"},
+            bozo::detail::query_description {"query without parameters 2", "SELECT 2"}
         )
     );
     EXPECT_THAT(
@@ -585,68 +585,68 @@ TEST(make_query_conf, should_return_two_descriptions_and_two_queries_for_two_des
 }
 
 TEST(query_repository, should_be_default_constructible) {
-    const ozo::query_repository<> q;
+    const bozo::query_repository<> q;
 }
 
 TEST(query_repository, default_should_not_be_initialized) {
-    const ozo::query_repository<> q;
+    const bozo::query_repository<> q;
     EXPECT_FALSE(q.is_initialized());
 }
 
 TEST(query_repository, initialized_by_query_conf_should_be_initialized) {
-    const ozo::query_repository<> q(std::make_shared<ozo::detail::query_conf>(std::vector<ozo::detail::query_description>()));
+    const bozo::query_repository<> q(std::make_shared<bozo::detail::query_conf>(std::vector<bozo::detail::query_description>()));
     EXPECT_TRUE(q.is_initialized());
 }
 
 TEST(query_repository, oprerator_bool_should_be_like_is_initialized_method) {
-    const ozo::query_repository<> q;
+    const bozo::query_repository<> q;
     EXPECT_FALSE(q);
 }
 
 TEST(make_query_repository, should_return_query_repository_for_empty_query_conf_and_no_types) {
-    EXPECT_NO_THROW(ozo::make_query_repository(std::string_view()));
+    EXPECT_NO_THROW(bozo::make_query_repository(std::string_view()));
 }
 
 TEST(query_repository_make_query, should_return_query_for_query_conf_with_single_query_without_parameters) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query without parameters\n"
         "SELECT 1",
         hana::tuple<query_without_parameters>()
     );
     EXPECT_EQ(
         repository.make_query<query_without_parameters>(),
-        ozo::make_query("SELECT 1")
+        bozo::make_query("SELECT 1")
     );
 }
 
 TEST(query_repository_make_query, should_return_query_for_query_conf_with_single_query_with_one_parameter) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query with one parameter\n"
         "SELECT :0::integer",
         hana::tuple<query_with_one_parameter>()
     );
     EXPECT_EQ(
         repository.make_query<query_with_one_parameter>(42),
-        ozo::make_query("SELECT $1::integer", 42)
+        bozo::make_query("SELECT $1::integer", 42)
     );
 }
 
 TEST(query_repository_make_query, should_return_query_for_query_conf_with_single_query_with_one_parameter_passed_in_tuple) {
     using parameters_type = query_with_one_parameter::parameters_type;
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query with one parameter\n"
         "SELECT :0::integer",
         hana::tuple<query_with_one_parameter>()
     );
     EXPECT_EQ(
         repository.make_query<query_with_one_parameter>(parameters_type(42)),
-        ozo::make_query("SELECT $1::integer", 42)
+        bozo::make_query("SELECT $1::integer", 42)
     );
 }
 
 TEST(query_repository_make_query, should_return_query_for_query_conf_with_single_query_with_one_const_reference_parameter) {
     using parameters_type = query_with_one_parameter::parameters_type;
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query with one parameter\n"
         "SELECT :0::integer",
         hana::tuple<query_with_one_parameter>()
@@ -654,12 +654,12 @@ TEST(query_repository_make_query, should_return_query_for_query_conf_with_single
     const parameters_type parameters(42);
     EXPECT_EQ(
         repository.make_query<query_with_one_parameter>(parameters),
-        ozo::make_query("SELECT $1::integer", 42)
+        bozo::make_query("SELECT $1::integer", 42)
     );
 }
 
 TEST(query_repository_make_query, should_return_query_for_query_conf_with_two_queries) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query without parameters\n"
         "SELECT 1\n"
         "-- name: query with one parameter\n"
@@ -668,16 +668,16 @@ TEST(query_repository_make_query, should_return_query_for_query_conf_with_two_qu
     );
     EXPECT_EQ(
         repository.make_query<query_without_parameters>(),
-        ozo::make_query("SELECT 1")
+        bozo::make_query("SELECT 1")
     );
     EXPECT_EQ(
         repository.make_query<query_with_one_parameter>(42),
-        ozo::make_query("SELECT $1::integer", 42)
+        bozo::make_query("SELECT $1::integer", 42)
     );
 }
 
 TEST(query_repository_make_query, should_return_query_for_query_conf_with_single_query_with_struct_parameters) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query with struct parameters\n"
         "SELECT :string::text || :number::text",
         hana::tuple<query_with_struct_parameters>()
@@ -686,24 +686,24 @@ TEST(query_repository_make_query, should_return_query_for_query_conf_with_single
         repository.make_query<query_with_struct_parameters>(
             struct_parameters {std::string_view("42"), 13}
         ),
-        ozo::make_query("SELECT $1::text || $2::text", std::string_view("42"), 13)
+        bozo::make_query("SELECT $1::text || $2::text", std::string_view("42"), 13)
     );
 }
 
 TEST(query_repository_make_query, should_return_query_for_query_conf_with_single_query_with_struct_parameters_with_different_fields_order) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query with struct parameters\n"
         "SELECT :number::text || :string::text",
         hana::tuple<query_with_struct_parameters>()
     );
     EXPECT_EQ(
         repository.make_query<query_with_struct_parameters>(struct_parameters {"42", 13}),
-        ozo::make_query("SELECT $2::text || $1::text", std::string_view("42"), 13)
+        bozo::make_query("SELECT $2::text || $1::text", std::string_view("42"), 13)
     );
 }
 
 TEST(query_repository_make_query, should_return_query_for_struct_parameters_passed_by_const_reference) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query with struct parameters\n"
         "SELECT :string::text || :number::text",
         hana::tuple<query_with_struct_parameters>()
@@ -711,12 +711,12 @@ TEST(query_repository_make_query, should_return_query_for_struct_parameters_pass
     const struct_parameters parameters {std::string_view("42"), 13};
     EXPECT_EQ(
         repository.make_query<query_with_struct_parameters>(static_cast<const struct_parameters&>(parameters)),
-        ozo::make_query("SELECT $1::text || $2::text", std::string_view("42"), 13)
+        bozo::make_query("SELECT $1::text || $2::text", std::string_view("42"), 13)
     );
 }
 
 TEST(query_repository_make_query, should_return_query_for_struct_parameters_passed_by_reference) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: query with struct parameters\n"
         "SELECT :string::text || :number::text",
         hana::tuple<query_with_struct_parameters>()
@@ -724,12 +724,12 @@ TEST(query_repository_make_query, should_return_query_for_struct_parameters_pass
     struct_parameters parameters {std::string_view("42"), 13};
     EXPECT_EQ(
         repository.make_query<query_with_struct_parameters>(static_cast<struct_parameters&>(parameters)),
-        ozo::make_query("SELECT $1::text || $2::text", std::string_view("42"), 13)
+        bozo::make_query("SELECT $1::text || $2::text", std::string_view("42"), 13)
     );
 }
 
 TEST(query_repository_make_query, should_not_copy_parameter_passed_by_rvalue_reference) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: prohibit copy query\n"
         "SELECT 1",
         hana::tuple<prohibit_copy_query>()
@@ -738,7 +738,7 @@ TEST(query_repository_make_query, should_not_copy_parameter_passed_by_rvalue_ref
 }
 
 TEST(query_repository_make_query, should_not_copy_struct_parameters_passed_by_rvalue_reference) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: prohibit copy struct query\n"
         "SELECT 1",
         hana::tuple<prohibit_copy_struct_query>()
@@ -747,7 +747,7 @@ TEST(query_repository_make_query, should_not_copy_struct_parameters_passed_by_rv
 }
 
 TEST(query_repository_make_query, should_copy_parameter_passed_by_const_reference) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: require copy query\n"
         "SELECT 1",
         hana::tuple<require_copy_query>()
@@ -757,7 +757,7 @@ TEST(query_repository_make_query, should_copy_parameter_passed_by_const_referenc
 }
 
 TEST(query_repository_make_query, should_copy_struct_parameters_passed_by_const_reference) {
-    const auto repository = ozo::make_query_repository(
+    const auto repository = bozo::make_query_repository(
         "-- name: require copy struct query\n"
         "SELECT 1",
         hana::tuple<require_copy_struct_query>()

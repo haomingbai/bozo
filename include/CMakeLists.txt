@@ -1,1 +1,1 @@
-install(DIRECTORY ozo DESTINATION include)
+install(DIRECTORY bozo DESTINATION include)

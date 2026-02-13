@@ -1,8 +1,8 @@
 #include <connection_mock.h>
 #include <test_error.h>
 
-#include <ozo/impl/async_request.h>
-#include <ozo/time_traits.h>
+#include <bozo/impl/async_request.h>
+#include <bozo/time_traits.h>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -12,13 +12,13 @@ namespace {
 namespace hana = boost::hana;
 
 using namespace testing;
-using namespace ozo::tests;
+using namespace bozo::tests;
 
 using callback_mock = callback_gmock<connection_ptr<>>;
 
-using ozo::impl::query_state;
-using ozo::error_code;
-using ozo::time_traits;
+using bozo::impl::query_state;
+using bozo::error_code;
+using bozo::time_traits;
 
 struct async_request_op : Test {
     StrictMock<connection_gmock> connection {};
@@ -63,7 +63,7 @@ TEST_F(async_request_op, should_set_timer_and_send_query_params_and_get_result_a
     EXPECT_CALL(cb_io.executor_, dispatch(_)).InSequence(s).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(callback, call(error_code {}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_request_op{empty_query {}, timeout, ozo::none, wrap(callback)}(error_code {}, conn);
+    bozo::impl::async_request_op{empty_query {}, timeout, bozo::none, wrap(callback)}(error_code {}, conn);
     on_timer_expired(boost::asio::error::operation_aborted);
 }
 
@@ -88,7 +88,7 @@ TEST_F(async_request_op, should_send_query_params_and_get_result_and_call_handle
     EXPECT_CALL(cb_io.executor_, dispatch(_)).InSequence(s).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(callback, call(error_code {}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_request_op{empty_query {}, ozo::none, ozo::none, wrap(callback)}(error_code {}, conn);
+    bozo::impl::async_request_op{empty_query {}, bozo::none, bozo::none, wrap(callback)}(error_code {}, conn);
 }
 
 TEST_F(async_request_op, should_cancel_connection_io_on_timeout) {
@@ -113,7 +113,7 @@ TEST_F(async_request_op, should_cancel_connection_io_on_timeout) {
     EXPECT_CALL(connection, async_wait_read(_)).InSequence(s).WillOnce(InvokeArgument<0>(error_code {}));
     EXPECT_CALL(strand, post(_)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_request_op{empty_query {}, timeout, ozo::none, wrap(callback)}(error_code {}, conn);
+    bozo::impl::async_request_op{empty_query {}, timeout, bozo::none, wrap(callback)}(error_code {}, conn);
 }
 
 } // namespace

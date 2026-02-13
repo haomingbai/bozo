@@ -1,7 +1,7 @@
-#include <ozo/connection_info.h>
-#include <ozo/connection_pool.h>
-#include <ozo/request.h>
-#include <ozo/shortcuts.h>
+#include <bozo/connection_info.h>
+#include <bozo/connection_pool.h>
+#include <bozo/request.h>
+#include <bozo/shortcuts.h>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/spawn.hpp>
@@ -11,7 +11,7 @@
 namespace asio = boost::asio;
 
 int main(int argc, char **argv) {
-    std::cout << "OZO connection pool example" << std::endl;
+    std::cout << "BOZO connection pool example" << std::endl;
 
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <connection string>\n";
@@ -24,9 +24,9 @@ int main(int argc, char **argv) {
     //! [Creating Connection Pool]
 
     // To make a connection to a database we need to make a ConnectionSource.
-    const ozo::connection_info connection_info(argv[1]);
+    const bozo::connection_info connection_info(argv[1]);
 
-    ozo::connection_pool_config connection_pool_config;
+    bozo::connection_pool_config connection_pool_config;
 
     // Maximum limit for number of stored connections
     connection_pool_config.capacity = 1;
@@ -38,7 +38,7 @@ int main(int argc, char **argv) {
     connection_pool_config.lifespan = std::chrono::hours(24);
 
     // Creating connection pool from connection_info as the underlying ConnectionSource
-    ozo::connection_pool connection_pool(connection_info, connection_pool_config);
+    bozo::connection_pool connection_pool(connection_info, connection_pool_config);
     //! [Creating Connection Pool]
 
     const auto coroutine = [&] (asio::yield_context yield) {
@@ -49,13 +49,13 @@ int main(int argc, char **argv) {
         // callbacks. This line is for the exposition and education purpose only.
         // The best practice is to use simple inline call like
         //
-        //     ozo::request(connection_pool[io], query, ozo::deadline(1s), ozo::into(res), yield);
+        //     bozo::request(connection_pool[io], query, bozo::deadline(1s), bozo::into(res), yield);
         //
         const auto connector = connection_pool[io];
         //! [Creating Connection Provider]
 
         // Request result is always set of rows. Client should take care of output object lifetime.
-        ozo::rows_of<int> result;
+        bozo::rows_of<int> result;
 
         // Request operation require ConnectionProvider, query, output object for result and CompletionToken.
         // Also we setup request timeout and reference for error code to avoid throwing exceptions.
@@ -63,13 +63,13 @@ int main(int argc, char **argv) {
         // get additional inforation about error through error context.
         boost::system::error_code ec;
         // This allows to use _SQL literals
-        using namespace ozo::literals;
+        using namespace bozo::literals;
         using namespace std::chrono_literals;
-        const auto connection = ozo::request(
+        const auto connection = bozo::request(
             connector,
             "SELECT pg_backend_pid()"_SQL,
-            ozo::deadline(1s),
-            ozo::into(result),
+            bozo::deadline(1s),
+            bozo::into(result),
             yield[ec]
         );
 
@@ -79,14 +79,14 @@ int main(int argc, char **argv) {
         if (ec) {
             std::cout << "Request failed with error: " << ec.message();
             // Here we should check if the connection is in null state to avoid UB.
-            if (!ozo::is_null_recursive(connection)) {
+            if (!bozo::is_null_recursive(connection)) {
                 // Let's check libpq native error message and if so - print it out
-                if (auto msg = ozo::error_message(connection); !msg.empty()) {
+                if (auto msg = bozo::error_message(connection); !msg.empty()) {
                     std::cout << ", error message: " << msg;
                 }
                 // Sometimes libpq native error message is not enough, so let's check
-                // the additional error context from OZO
-                if (auto ctx = ozo::get_error_context(connection); !ctx.empty()) {
+                // the additional error context from BOZO
+                if (auto ctx = bozo::get_error_context(connection); !ctx.empty()) {
                     std::cout << ", error context: " << ctx;
                 }
             }

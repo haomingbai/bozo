@@ -1,12 +1,12 @@
 #pragma once
 
-#include <ozo/error.h>
+#include <bozo/error.h>
 
 #include <boost/asio/steady_timer.hpp>
 
 #include <sstream>
 
-namespace ozo::tests::error {
+namespace bozo::tests::error {
 
 enum code {
     ok, // to do no use error code 0
@@ -18,7 +18,7 @@ namespace detail {
 
 class category : public error_category {
 public:
-    const char* name() const noexcept override { return "ozo::tests::error::detail::category"; }
+    const char* name() const noexcept override { return "bozo::tests::error::detail::category"; }
 
     std::string message(int value) const override {
         switch (code(value)) {
@@ -42,24 +42,24 @@ inline const error_category& get_category() {
     return instance;
 }
 
-} // namespace ozo::tests::error
+} // namespace bozo::tests::error
 
 namespace boost::system {
 
 template <>
-struct is_error_code_enum<ozo::tests::error::code> : std::true_type {};
+struct is_error_code_enum<bozo::tests::error::code> : std::true_type {};
 
 } // namespace boost::system
 
-namespace ozo::tests::error {
+namespace bozo::tests::error {
 
 inline auto make_error_code(const code e) {
     return boost::system::error_code(static_cast<int>(e), get_category());
 }
 
-} // namespace ozo::tests::error
+} // namespace bozo::tests::error
 
-namespace ozo::tests::errc {
+namespace bozo::tests::errc {
 
 enum code {
     ok, // to do no use error code 0
@@ -70,7 +70,7 @@ namespace detail {
 
 class category : public error_category {
 public:
-    const char* name() const noexcept override { return "ozo::tests::error::detail::category"; }
+    const char* name() const noexcept override { return "bozo::tests::error::detail::category"; }
 
     std::string message(int value) const override {
         switch (code(value)) {
@@ -86,10 +86,10 @@ public:
 
     bool equivalent( const boost::system::error_code& code, int condition ) const noexcept override {
         if (condition == error) {
-            return code.category() == ozo::tests::error::get_category() &&
-                (code.value() == ozo::tests::error::error || code.value() == ozo::tests::error::another_error);
+            return code.category() == bozo::tests::error::get_category() &&
+                (code.value() == bozo::tests::error::error || code.value() == bozo::tests::error::another_error);
         }
-        return condition == ok && code == ozo::tests::error::ok;
+        return condition == ok && code == bozo::tests::error::ok;
     }
 };
 
@@ -100,20 +100,20 @@ inline const error_category& get_category() {
     return instance;
 }
 
-} // namespace ozo::tests::error
+} // namespace bozo::tests::error
 
 namespace boost::system {
 
 template <>
-struct is_error_condition_enum<ozo::tests::errc::code> : std::true_type {};
+struct is_error_condition_enum<bozo::tests::errc::code> : std::true_type {};
 
 } // namespace boost::system
 
-namespace ozo::tests::errc {
+namespace bozo::tests::errc {
 
 inline auto make_error_condition(const code e) {
     return boost::system::error_condition(static_cast<int>(e), get_category());
 }
 
-} // namespace ozo::tests::error
+} // namespace bozo::tests::error
 

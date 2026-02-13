@@ -1,6 +1,6 @@
-#include <ozo/connection_info.h>
-#include <ozo/request.h>
-#include <ozo/shortcuts.h>
+#include <bozo/connection_info.h>
+#include <bozo/request.h>
+#include <bozo/shortcuts.h>
 
 #include <boost/asio/io_service.hpp>
 #include <boost/asio/spawn.hpp>
@@ -10,7 +10,7 @@
 namespace asio = boost::asio;
 
 int main(int argc, char **argv) {
-    std::cout << "OZO request example" << std::endl;
+    std::cout << "BOZO request example" << std::endl;
 
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <connection string>\n";
@@ -23,21 +23,21 @@ int main(int argc, char **argv) {
     // To make a request we need to make a ConnectionSource. It knows how to connect to database using
     // connection string. See https://www.postgresql.org/docs/9.4/static/libpq-connect.html#LIBPQ-CONNSTRING
     // how to make a connection string.
-    auto conn_info = ozo::connection_info(argv[1]);
+    auto conn_info = bozo::connection_info(argv[1]);
 
     const auto coroutine = [&] (asio::yield_context yield) {
         // Request result is always set of rows. Client should take care of output object lifetime.
-        ozo::rows_of<int> result;
+        bozo::rows_of<int> result;
 
         // Request operation require ConnectionProvider, query, output object for result and CompletionToken.
         // Also we setup request timeout and reference for error code to avoid throwing exceptions.
         // Function returns connection which can be used as ConnectionProvider for futher requests or to
         // get additional information about error through error context.
-        ozo::error_code ec;
+        bozo::error_code ec;
         // This allows to use _SQL literals
-        using namespace ozo::literals;
+        using namespace bozo::literals;
         using namespace std::chrono_literals;
-        const auto connection = ozo::request(conn_info[io], "SELECT 1"_SQL, 1s, ozo::into(result), yield[ec]);
+        const auto connection = bozo::request(conn_info[io], "SELECT 1"_SQL, 1s, bozo::into(result), yield[ec]);
 
         // When request is completed we check is there an error. This example should not produce any errors
         // if there are no problems with target database, network or permissions for given user in connection
@@ -45,14 +45,14 @@ int main(int argc, char **argv) {
         if (ec) {
             std::cout << "Request failed with error: " << ec.message();
             // Here we should check if the connection is in null state to avoid UB.
-            if (!ozo::is_null_recursive(connection)) {
+            if (!bozo::is_null_recursive(connection)) {
                 // Let's check libpq native error message and if so - print it out
-                if (auto msg = ozo::error_message(connection); !msg.empty()) {
+                if (auto msg = bozo::error_message(connection); !msg.empty()) {
                     std::cout << ", error message: " << msg;
                 }
                 // Sometimes libpq native error message is not enough, so let's check
-                // the additional error context from OZO
-                if (auto ctx = ozo::get_error_context(connection); !ctx.empty()) {
+                // the additional error context from BOZO
+                if (auto ctx = bozo::get_error_context(connection); !ctx.empty()) {
                     std::cout << ", error context: " << ctx;
                 }
             }

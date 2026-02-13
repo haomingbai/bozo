@@ -17,7 +17,7 @@ build_clang() {
         ;;
         test_external_project)
             CMAKE_BUILD_TYPE=Release
-            OZO_TEST_EXTERNAL_PROJECT=ON
+            BOZO_TEST_EXTERNAL_PROJECT=ON
             build
         ;;
         asan)
@@ -61,12 +61,12 @@ build_gcc() {
         ;;
         test_external_project)
             CMAKE_BUILD_TYPE=Release
-            OZO_TEST_EXTERNAL_PROJECT=ON
+            BOZO_TEST_EXTERNAL_PROJECT=ON
             build
         ;;
         coverage)
             CMAKE_BUILD_TYPE=Debug
-            OZO_COVERAGE=ON
+            BOZO_COVERAGE=ON
             build
         ;;
         conan)
@@ -145,33 +145,33 @@ build() {
         -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS"\
         -DCMAKE_CXX_FLAGS_RELWITHDEBINFO="$CMAKE_CXX_FLAGS_RELWITHDEBINFO" \
         -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
-        -DOZO_BUILD_TESTS=ON \
-        -DOZO_BUILD_EXAMPLES=ON \
-        -DOZO_BUILD_BENCHMARKS=ON \
-        -DOZO_COVERAGE=$OZO_COVERAGE \
-        -DOZO_BUILD_PG_TESTS=$OZO_BUILD_PG_TESTS \
-        -DOZO_PG_TEST_CONNINFO="host=${POSTGRES_HOST} port=5432 dbname=${POSTGRES_DB} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD}" \
-        -DBoost_NO_SYSTEM_PATHS="${OZO_Boost_NO_SYSTEM_PATHS}" \
-        -DBOOST_ROOT="${OZO_BOOST_ROOT}" \
-        -DBOOST_LIBRARYDIR="${OZO_BOOST_LIBRARYDIR}" \
+        -DBOZO_BUILD_TESTS=ON \
+        -DBOZO_BUILD_EXAMPLES=ON \
+        -DBOZO_BUILD_BENCHMARKS=ON \
+        -DBOZO_COVERAGE=$BOZO_COVERAGE \
+        -DBOZO_BUILD_PG_TESTS=$BOZO_BUILD_PG_TESTS \
+        -DBOZO_PG_TEST_CONNINFO="host=${POSTGRES_HOST} port=5432 dbname=${POSTGRES_DB} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD}" \
+        -DBoost_NO_SYSTEM_PATHS="${BOZO_Boost_NO_SYSTEM_PATHS}" \
+        -DBOOST_ROOT="${BOZO_BOOST_ROOT}" \
+        -DBOOST_LIBRARYDIR="${BOZO_BOOST_LIBRARYDIR}" \
         ${SOURCE_DIR}
     make -j $(nproc || sysctl -n hw.ncpu)
-    if [[ $OZO_BUILD_PG_TESTS == "ON" ]]; then
+    if [[ $BOZO_BUILD_PG_TESTS == "ON" ]]; then
         ${SOURCE_DIR}/scripts/wait_postgres.sh
     fi
-    if [[ ${OZO_COVERAGE} == "ON" ]]; then
-        make ozo_coverage
+    if [[ ${BOZO_COVERAGE} == "ON" ]]; then
+        make bozo_coverage
     else
         ctest -V
     fi
-    if [[ ${OZO_TEST_EXTERNAL_PROJECT} == "ON" ]]; then
-        INSTALL_DIR="${BUILD_DIR}/ozo_install"
+    if [[ ${BOZO_TEST_EXTERNAL_PROJECT} == "ON" ]]; then
+        INSTALL_DIR="${BUILD_DIR}/bozo_install"
         mkdir -p ${INSTALL_DIR}
         make DESTDIR=${INSTALL_DIR} install
 
         PREVIOUS_DIR="$(pwd)"
         cd ${INSTALL_DIR}
-        OZO_ROOT_DIR="$(pwd)/usr/local"
+        BOZO_ROOT_DIR="$(pwd)/usr/local"
         cd ${PREVIOUS_DIR}
 
 
@@ -182,17 +182,17 @@ build() {
             -DCMAKE_C_COMPILER="${CC_COMPILER}" \
             -DCMAKE_CXX_COMPILER="${CXX_COMPILER}" \
             -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS" \
-            -Dozo_ROOT="${OZO_ROOT_DIR}" \
+            -Dbozo_ROOT="${BOZO_ROOT_DIR}" \
             ${SOURCE_DIR}/tests/external_project
         make
     fi
 }
 
 launch_in_docker() {
-    if [[ "${OZO_BUILD_PG_TESTS}" == "ON" ]]; then
-        SERVICE=ozo_build_with_pg_tests
+    if [[ "${BOZO_BUILD_PG_TESTS}" == "ON" ]]; then
+        SERVICE=bozo_build_with_pg_tests
     else
-        SERVICE=ozo_build
+        SERVICE=bozo_build
     fi
     if ! [[ "${BASE_BUILD_DIR}" ]]; then
         export BASE_BUILD_DIR=build
@@ -204,17 +204,17 @@ launch_in_docker() {
 }
 
 launch_with_pg() {
-    docker-compose up -d ozo_postgres
-    ID=$(docker-compose ps -q ozo_postgres)
-    export POSTGRES_HOST=$(docker inspect --format '{{ .NetworkSettings.Networks.ozo_ozo.IPAddress }}' ${ID})
-    export POSTGRES_DB=ozo_test_db
-    export POSTGRES_USER=ozo_test_user
+    docker-compose up -d bozo_postgres
+    ID=$(docker-compose ps -q bozo_postgres)
+    export POSTGRES_HOST=$(docker inspect --format '{{ .NetworkSettings.Networks.bozo_bozo.IPAddress }}' ${ID})
+    export POSTGRES_DB=bozo_test_db
+    export POSTGRES_USER=bozo_test_user
     export POSTGRES_PASSWORD='v4Xpkocl~5l6h219Ynk1lJbM61jIr!ca'
-    export OZO_BUILD_PG_TESTS=ON
+    export BOZO_BUILD_PG_TESTS=ON
     export BASE_BUILD_DIR=build/pg
     $*
-    docker-compose stop ozo_postgres
-    docker-compose rm -f ozo_postgres
+    docker-compose stop bozo_postgres
+    docker-compose rm -f bozo_postgres
 }
 
 case "$1" in

@@ -1,8 +1,8 @@
-#include <ozo/connection_info.h>
-#include <ozo/query_builder.h>
-#include <ozo/request.h>
-#include <ozo/shortcuts.h>
-#include <ozo/failover/retry.h>
+#include <bozo/connection_info.h>
+#include <bozo/query_builder.h>
+#include <bozo/request.h>
+#include <bozo/shortcuts.h>
+#include <bozo/failover/retry.h>
 
 #include <boost/asio/spawn.hpp>
 #include <boost/range/adaptor/transformed.hpp>
@@ -12,10 +12,10 @@
 
 namespace {
 template <
-    typename OidMap = ozo::empty_oid_map,
-    typename Statistics = ozo::no_statistics>
+    typename OidMap = bozo::empty_oid_map,
+    typename Statistics = bozo::no_statistics>
 struct connection_info_sequence {
-    using base_type = ozo::connection_info<OidMap, Statistics>;
+    using base_type = bozo::connection_info<OidMap, Statistics>;
     using connection_type = typename base_type::connection_type;
 
     std::vector<base_type> base_;
@@ -35,40 +35,40 @@ struct connection_info_sequence {
     connection_info_sequence(connection_info_sequence&&) = delete;
 
     template <typename TimeConstraint, typename Handler>
-    void operator ()(ozo::io_context& io, TimeConstraint t, Handler&& handler) {
+    void operator ()(bozo::io_context& io, TimeConstraint t, Handler&& handler) {
         if (i_==base_.end()) {
-            handler(ozo::error::pq_connection_start_failed, connection_type{});
+            handler(bozo::error::pq_connection_start_failed, connection_type{});
         } else {
             (*i_++)(io, t, std::forward<Handler>(handler));
         }
     }
 
-    auto operator [](ozo::io_context& io) & {
-        return ozo::connection_provider(*this, io);
+    auto operator [](bozo::io_context& io) & {
+        return bozo::connection_provider(*this, io);
     }
 };
 
 #define ASSERT_REQUEST_OK(ec, conn)\
     ASSERT_FALSE(ec) << ec.message() \
-        << "|" << ozo::error_message(conn) \
-        << "|" << (!ozo::is_null_recursive(conn) ? ozo::get_error_context(conn) : "") << std::endl
+        << "|" << bozo::error_message(conn) \
+        << "|" << (!bozo::is_null_recursive(conn) ? bozo::get_error_context(conn) : "") << std::endl
 
 
 namespace hana = boost::hana;
 
 using namespace testing;
-// using namespace ozo::tests;
+// using namespace bozo::tests;
 
 TEST(request, should_return_success_for_invalid_connection_info_retried_with_valid_connection_info) {
-    using namespace ozo::literals;
+    using namespace bozo::literals;
     using namespace hana::literals;
 
-    ozo::io_context io;
-    connection_info_sequence<> conn_info({"invalid connection info", OZO_PG_TEST_CONNINFO});
+    bozo::io_context io;
+    connection_info_sequence<> conn_info({"invalid connection info", BOZO_PG_TEST_CONNINFO});
 
     std::vector<int> res;
-    ozo::request[ozo::failover::retry(ozo::errc::connection_error)*2](conn_info[io], "SELECT 1"_SQL + " + 1"_SQL, ozo::into(res),
-            [&](ozo::error_code ec, auto conn) {
+    bozo::request[bozo::failover::retry(bozo::errc::connection_error)*2](conn_info[io], "SELECT 1"_SQL + " + 1"_SQL, bozo::into(res),
+            [&](bozo::error_code ec, auto conn) {
         ASSERT_REQUEST_OK(ec, conn);
         EXPECT_EQ(res.front(), 2);
     });
@@ -78,15 +78,15 @@ TEST(request, should_return_success_for_invalid_connection_info_retried_with_val
 }
 
 TEST(request, should_return_error_and_bad_connect_for_nonretryable_error) {
-    using namespace ozo::literals;
+    using namespace bozo::literals;
     using namespace hana::literals;
 
-    ozo::io_context io;
-    connection_info_sequence<> conn_info({"invalid connection info", OZO_PG_TEST_CONNINFO});
+    bozo::io_context io;
+    connection_info_sequence<> conn_info({"invalid connection info", BOZO_PG_TEST_CONNINFO});
 
     std::vector<int> res;
-    ozo::request[ozo::failover::retry(ozo::errc::database_readonly)*2](conn_info[io], "SELECT 1"_SQL + " + 1"_SQL, ozo::into(res),
-            [&](ozo::error_code ec, [[maybe_unused]] auto conn) {
+    bozo::request[bozo::failover::retry(bozo::errc::database_readonly)*2](conn_info[io], "SELECT 1"_SQL + " + 1"_SQL, bozo::into(res),
+            [&](bozo::error_code ec, [[maybe_unused]] auto conn) {
         EXPECT_TRUE(ec);
     });
 
@@ -96,15 +96,15 @@ TEST(request, should_return_error_and_bad_connect_for_nonretryable_error) {
 }
 
 TEST(request, should_return_error_and_bad_connect_for_invalid_connection_info_and_expired_tries) {
-    using namespace ozo::literals;
+    using namespace bozo::literals;
     using namespace hana::literals;
 
-    ozo::io_context io;
+    bozo::io_context io;
     connection_info_sequence<> conn_info({"invalid connection info", "invalid connection info"});
 
     std::vector<int> res;
-    ozo::request[ozo::failover::retry()*2](conn_info[io], "SELECT 1"_SQL + " + 1"_SQL, ozo::into(res),
-            [&](ozo::error_code ec, [[maybe_unused]] auto conn) {
+    bozo::request[bozo::failover::retry()*2](conn_info[io], "SELECT 1"_SQL + " + 1"_SQL, bozo::into(res),
+            [&](bozo::error_code ec, [[maybe_unused]] auto conn) {
         EXPECT_TRUE(ec);
     });
 

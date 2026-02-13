@@ -1,7 +1,7 @@
 #include <connection_mock.h>
 #include <test_error.h>
 
-#include <ozo/impl/async_request.h>
+#include <bozo/impl/async_request.h>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -11,7 +11,7 @@ namespace {
 namespace asio = boost::asio;
 
 using namespace testing;
-using namespace ozo::tests;
+using namespace bozo::tests;
 
 using callback_mock = callback_gmock<connection_ptr<>>;
 
@@ -25,17 +25,17 @@ struct fixture {
 
     auto make_operation_context() {
         EXPECT_CALL(callback, get_executor()).WillRepeatedly(Return(cb_io.get_executor()));
-        return ozo::impl::make_request_operation_context(conn, wrap(callback));
+        return bozo::impl::make_request_operation_context(conn, wrap(callback));
     }
 
-    decltype(ozo::impl::make_request_operation_context(conn, wrap(callback))) ctx;
+    decltype(bozo::impl::make_request_operation_context(conn, wrap(callback))) ctx;
 
     fixture() : ctx(make_operation_context()) {}
 
 };
 
-using ozo::impl::query_state;
-using ozo::error_code;
+using bozo::impl::query_state;
+using bozo::error_code;
 
 struct async_get_result_op : Test {
     fixture m;
@@ -46,8 +46,8 @@ struct async_get_result_op_call : async_get_result_op,
 };
 
 TEST_P(async_get_result_op_call, when_query_state_is_error_should_exit_and_preserve_state){
-    m.ctx->state = ozo::impl::query_state::error;
-    ozo::impl::async_get_result_op{m.ctx, ozo::none}(GetParam());
+    m.ctx->state = bozo::impl::query_state::error;
+    bozo::impl::async_get_result_op{m.ctx, bozo::none}(GetParam());
     EXPECT_EQ(m.ctx->state, query_state::error);
 }
 
@@ -69,7 +69,7 @@ TEST_P(async_get_result_op_call_with_error, should_call_callback_with_given_erro
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
     EXPECT_CALL(m.callback, call(error_code{error::error}, _)).WillOnce(Return());
 
-    ozo::impl::async_get_result_op{m.ctx, ozo::none}(error::error);
+    bozo::impl::async_get_result_op{m.ctx, bozo::none}(error::error);
 }
 
 TEST_P(async_get_result_op_call_with_error, should_post_callback_with_operation_aborted_if_called_with_bad_descriptor) {
@@ -80,7 +80,7 @@ TEST_P(async_get_result_op_call_with_error, should_post_callback_with_operation_
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
     EXPECT_CALL(m.callback, call(error_code{boost::asio::error::operation_aborted}, _)).WillOnce(Return());
 
-    ozo::impl::async_get_result_op{m.ctx, ozo::none}(boost::asio::error::bad_descriptor);
+    bozo::impl::async_get_result_op{m.ctx, bozo::none}(boost::asio::error::bad_descriptor);
 }
 
 TEST_P(async_get_result_op_call_with_error, should_set_query_state_in_error) {
@@ -91,7 +91,7 @@ TEST_P(async_get_result_op_call_with_error, should_set_query_state_in_error) {
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
     EXPECT_CALL(m.callback, call(error_code{error::error}, _)).WillOnce(Return());
 
-    ozo::impl::async_get_result_op{m.ctx, ozo::none}(error::error);
+    bozo::impl::async_get_result_op{m.ctx, bozo::none}(error::error);
 
     EXPECT_EQ(m.ctx->state, query_state::error);
 }
@@ -104,7 +104,7 @@ TEST_P(async_get_result_op_call_with_error, should_replace_empty_connection_erro
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
     EXPECT_CALL(m.callback, call(error_code{error::error}, _)).WillOnce(Return());
 
-    ozo::impl::async_get_result_op{m.ctx, ozo::none}(error::error);
+    bozo::impl::async_get_result_op{m.ctx, bozo::none}(error::error);
 
     EXPECT_EQ(m.conn->error_context_, "error while get request result");
 }
@@ -118,7 +118,7 @@ TEST_P(async_get_result_op_call_with_error, should_preserve_not_empty_connection
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
     EXPECT_CALL(m.callback, call(error_code{error::error}, _)).WillOnce(Return());
 
-    ozo::impl::async_get_result_op{m.ctx, ozo::none}(error::error);
+    bozo::impl::async_get_result_op{m.ctx, bozo::none}(error::error);
 
     EXPECT_EQ(m.conn->error_context_, "my error");
 }
@@ -159,7 +159,7 @@ TEST_F(async_get_result, should_wait_for_read_and_consume_input_while_is_busy_re
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(1));
     EXPECT_CALL(m.connection, async_wait_read(_)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_post_callback_with_error_if_consume_input_failed) {
@@ -177,10 +177,10 @@ TEST_F(async_get_result, should_post_callback_with_error_if_consume_input_failed
     EXPECT_CALL(m.connection, cancel()).InSequence(s).WillOnce(Return());
 
     // Post callback with error
-    EXPECT_CALL(m.callback, call(error_code{ozo::error::pg_consume_input_failed}, _))
+    EXPECT_CALL(m.callback, call(error_code{bozo::error::pg_consume_input_failed}, _))
         .InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_process_data_and_post_callback_if_result_is_empty) {
@@ -195,7 +195,7 @@ TEST_F(async_get_result, should_process_data_and_post_callback_if_result_is_empt
     // Post callback with no error since result is empty
     EXPECT_CALL(m.callback, call(error_code{}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_post_callback_with_error_and_consume_if_process_data_throws) {
@@ -203,7 +203,7 @@ TEST_F(async_get_result, should_post_callback_with_error_and_consume_if_process_
 
     // Get result since PQisBusy() is false
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_TUPLES_OK, nullptr};
+    bozo::tests::pg_result result{PGRES_TUPLES_OK, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -218,10 +218,10 @@ TEST_F(async_get_result, should_post_callback_with_error_and_consume_if_process_
 
     // Post callback with no error since result is error
     EXPECT_CALL(m.connection, cancel()).InSequence(s).WillOnce(Return());
-    EXPECT_CALL(m.callback, call(error_code{ozo::error::bad_result_process}, _))
+    EXPECT_CALL(m.callback, call(error_code{bozo::error::bad_result_process}, _))
         .InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_process_data_and_post_callback_and_consume_if_result_status_is_PGRES_TUPLES_OK) {
@@ -229,7 +229,7 @@ TEST_F(async_get_result, should_process_data_and_post_callback_and_consume_if_re
 
     // Get result since PQisBusy() is 0
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_TUPLES_OK, nullptr};
+    bozo::tests::pg_result result{PGRES_TUPLES_OK, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -245,7 +245,7 @@ TEST_F(async_get_result, should_process_data_and_post_callback_and_consume_if_re
     // Post callback with no error since result is ok
     EXPECT_CALL(m.callback, call(error_code{}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_process_data_and_post_callback_if_result_status_is_PGRES_SINGLE_TUPLE) {
@@ -253,7 +253,7 @@ TEST_F(async_get_result, should_process_data_and_post_callback_if_result_status_
 
     // Get result since PQisBusy() is 0
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_SINGLE_TUPLE, nullptr};
+    bozo::tests::pg_result result{PGRES_SINGLE_TUPLE, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -264,7 +264,7 @@ TEST_F(async_get_result, should_process_data_and_post_callback_if_result_status_
     // Post callback with no error since result is ok
     EXPECT_CALL(m.callback, call(error_code{}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_process_data_and_post_callback_and_consume_result_if_result_status_is_PGRES_COMMAND_OK) {
@@ -272,7 +272,7 @@ TEST_F(async_get_result, should_process_data_and_post_callback_and_consume_resul
 
     // Get result since PQisBusy() is 0
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_COMMAND_OK, nullptr};
+    bozo::tests::pg_result result{PGRES_COMMAND_OK, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -288,7 +288,7 @@ TEST_F(async_get_result, should_process_data_and_post_callback_and_consume_resul
     // Post callback with no error since result is ok
     EXPECT_CALL(m.callback, call(error_code{}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_post_callback_with_error_and_consume_result_if_result_status_is_PGRES_BAD_RESPONSE) {
@@ -296,7 +296,7 @@ TEST_F(async_get_result, should_post_callback_with_error_and_consume_result_if_r
 
     // Get result since PQisBusy() is 0
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_BAD_RESPONSE, nullptr};
+    bozo::tests::pg_result result{PGRES_BAD_RESPONSE, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -309,11 +309,11 @@ TEST_F(async_get_result, should_post_callback_with_error_and_consume_result_if_r
 
     // Post callback with error and cancel all io
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
-    EXPECT_CALL(m.callback, call(error_code{ozo::error::result_status_bad_response}, _))
+    EXPECT_CALL(m.callback, call(error_code{bozo::error::result_status_bad_response}, _))
         .InSequence(s)
         .WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_post_callback_with_error_and_consume_result_if_result_status_is_PGRES_EMPTY_QUERY) {
@@ -321,7 +321,7 @@ TEST_F(async_get_result, should_post_callback_with_error_and_consume_result_if_r
 
     // Get result since PQisBusy() is 0
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_EMPTY_QUERY, nullptr};
+    bozo::tests::pg_result result{PGRES_EMPTY_QUERY, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -334,11 +334,11 @@ TEST_F(async_get_result, should_post_callback_with_error_and_consume_result_if_r
 
     // Post callback with error and cancel all io
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
-    EXPECT_CALL(m.callback, call(error_code{ozo::error::result_status_empty_query}, _))
+    EXPECT_CALL(m.callback, call(error_code{bozo::error::result_status_empty_query}, _))
         .InSequence(s)
         .WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_post_callback_with_error_from_result_and_consume_result_if_result_status_is_PGRES_FATAL_ERROR) {
@@ -348,7 +348,7 @@ TEST_F(async_get_result, should_post_callback_with_error_from_result_and_consume
 
     // Get result since PQisBusy() is 0
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_FATAL_ERROR, nullptr};
+    bozo::tests::pg_result result{PGRES_FATAL_ERROR, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -361,9 +361,9 @@ TEST_F(async_get_result, should_post_callback_with_error_from_result_and_consume
 
     // Post callback with error and cancel all io
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
-    EXPECT_CALL(m.callback, call(error_code{ozo::error::no_sql_state_found}, _)).InSequence(s).WillOnce(Return());
+    EXPECT_CALL(m.callback, call(error_code{bozo::error::no_sql_state_found}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_consume_tail_data_asynchronously) {
@@ -371,7 +371,7 @@ TEST_F(async_get_result, should_consume_tail_data_asynchronously) {
 
     // Get result since PQisBusy() is 0
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_COMMAND_OK, nullptr};
+    bozo::tests::pg_result result{PGRES_COMMAND_OK, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -390,7 +390,7 @@ TEST_F(async_get_result, should_consume_tail_data_asynchronously) {
     // Post callback with no error since result is ok
     EXPECT_CALL(m.callback, call(error_code{}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 TEST_F(async_get_result, should_post_callback_with_result_on_consume_input_error) {
@@ -398,7 +398,7 @@ TEST_F(async_get_result, should_post_callback_with_result_on_consume_input_error
 
     // Get result since PQisBusy()() is false
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{PGRES_COMMAND_OK, nullptr};
+    bozo::tests::pg_result result{PGRES_COMMAND_OK, nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -415,7 +415,7 @@ TEST_F(async_get_result, should_post_callback_with_result_on_consume_input_error
     // Post callback with error and cancel all io
     EXPECT_CALL(m.callback, call(error_code{}, _)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 struct async_get_result_ : async_get_result,
@@ -427,7 +427,7 @@ TEST_P(async_get_result_, should_post_callback_with_error_from_result_and_consum
 
     // Get result since PQisBusy() is false
     EXPECT_CALL(m.native_handle, PQisBusy()).InSequence(s).WillOnce(Return(0));
-    ozo::tests::pg_result result{GetParam(), nullptr};
+    bozo::tests::pg_result result{GetParam(), nullptr};
     EXPECT_CALL(m.native_handle, PQgetResult())
         .InSequence(s)
         .WillOnce(Return(&result));
@@ -440,11 +440,11 @@ TEST_P(async_get_result_, should_post_callback_with_error_from_result_and_consum
 
     // Post callback with error and cancel all io
     EXPECT_CALL(m.connection, cancel()).WillOnce(Return());
-    EXPECT_CALL(m.callback, call(error_code{ozo::error::result_status_unexpected}, _))
+    EXPECT_CALL(m.callback, call(error_code{bozo::error::result_status_unexpected}, _))
         .InSequence(s)
         .WillOnce(Return());
 
-    ozo::impl::async_get_result(m.ctx, process_f);
+    bozo::impl::async_get_result(m.ctx, process_f);
 }
 
 INSTANTIATE_TEST_SUITE_P(

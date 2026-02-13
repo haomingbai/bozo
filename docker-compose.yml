@@ -1,68 +1,68 @@
 version: '3'
 
 services:
-  ozo_build:
+  bozo_build:
     build: docker/build
-    image: ozo_build
+    image: bozo_build
     privileged: true # https://github.com/google/sanitizers/issues/764
     environment:
       BASE_BUILD_DIR: build/docker
     volumes:
     - ~/.ccache:/ccache
     - .:/code
-  ozo_postgres:
+  bozo_postgres:
     image: postgres:alpine
     environment:
-       POSTGRES_DB: &POSTGRES_DB ozo_test_db
-       POSTGRES_USER: &POSTGRES_USER ozo_test_user
+       POSTGRES_DB: &POSTGRES_DB bozo_test_db
+       POSTGRES_USER: &POSTGRES_USER bozo_test_user
        POSTGRES_PASSWORD: &POSTGRES_PASSWORD 'v4Xpkocl~5l6h219Ynk1lJbM61jIr!ca'
     networks:
-    - ozo
-  ozo_build_with_pg_tests:
+    - bozo
+  bozo_build_with_pg_tests:
     build: docker/build
-    image: ozo_build
+    image: bozo_build
     privileged: true # https://github.com/google/sanitizers/issues/764
     environment:
       BASE_BUILD_DIR: build/docker_with_pg_tests
-      OZO_BUILD_PG_TESTS: 'ON'
-      POSTGRES_HOST: ozo_postgres
+      BOZO_BUILD_PG_TESTS: 'ON'
+      POSTGRES_HOST: bozo_postgres
       POSTGRES_DB: *POSTGRES_DB
       POSTGRES_USER: *POSTGRES_USER
       POSTGRES_PASSWORD: *POSTGRES_PASSWORD
     depends_on:
-    - ozo_postgres
+    - bozo_postgres
     volumes:
     - ~/.ccache:/ccache
     - .:/code
     networks:
-    - ozo
+    - bozo
   asyncpg:
     build: docker/asyncpg
     image: asyncpg
     environment:
-      POSTGRES_HOST: ozo_postgres
+      POSTGRES_HOST: bozo_postgres
       POSTGRES_DB: *POSTGRES_DB
       POSTGRES_USER: *POSTGRES_USER
       POSTGRES_PASSWORD: *POSTGRES_PASSWORD
     depends_on:
-    - ozo_postgres
+    - bozo_postgres
     volumes:
     - .:/code
     networks:
-    - ozo
+    - bozo
   aiopg:
     build: docker/aiopg
     image: aiopg
     environment:
-      POSTGRES_HOST: ozo_postgres
+      POSTGRES_HOST: bozo_postgres
       POSTGRES_DB: *POSTGRES_DB
       POSTGRES_USER: *POSTGRES_USER
       POSTGRES_PASSWORD: *POSTGRES_PASSWORD
     depends_on:
-    - ozo_postgres
+    - bozo_postgres
     volumes:
     - .:/code
     networks:
-    - ozo
+    - bozo
 networks:
-  ozo: {}
+  bozo: {}

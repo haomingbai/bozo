@@ -1,4 +1,4 @@
-# OZO Asio Migration (Boost 1.74+)
+# BOZO Asio Migration (Boost 1.74+)
 
 ## Minimum versions
 
@@ -9,21 +9,25 @@
 ## Behavior and compatibility changes
 
 1. **Default executor model switched to modern Asio executors**
-- OZO no longer forces `BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT`.
+
+- BOZO no longer forces `BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT`.
 - By default, build uses the non-TS executor model introduced in Boost 1.74.
 
-2. **Legacy TS executor remains opt-in**
-- To keep old behavior, configure with:
-  - `-DOZO_USE_TS_EXECUTOR=ON`
+1. **Legacy TS executor remains opt-in**
 
-3. **Completion token initiation path updated**
-- OZO now uses `boost::asio::async_initiate` directly.
+- To keep old behavior, configure with:
+  - `-DBOZO_USE_TS_EXECUTOR=ON`
+
+1. **Completion token initiation path updated**
+
+- BOZO now uses `boost::asio::async_initiate` directly.
 - This resolves ADL ambiguity with `async_initiate` on newer Asio.
 
-4. **libpq status handling extended**
+1. **libpq status handling extended**
+
 - Newer libpq statuses (`PGRES_PIPELINE_*`, `PGRES_TUPLES_CHUNK`) are handled when available.
 
 ## Notes for tests/examples
 
-- PG integration tests require a PostgreSQL instance reachable via `OZO_PG_TEST_CONNINFO`.
+- PG integration tests require a PostgreSQL instance reachable via `BOZO_PG_TEST_CONNINFO`.
 - `ltree` integration cases require the server to provide the `ltree` extension (usually via contrib packages).

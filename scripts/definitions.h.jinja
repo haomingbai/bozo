@@ -9,15 +9,15 @@
 //     Generated from: "{{src}}".
 //
 
-#include <ozo/type_traits.h>
+#include <bozo/type_traits.h>
 
 #include <boost/hana/string.hpp>
 
 /**
  * @brief Helper macro to define type mapping between C++ type and PostgreSQL type
  *
- * In general type mapping is provided via `ozo::definitions::type` and
- * `ozo::definitions::array` specialization. The library has all the necessary information
+ * In general type mapping is provided via `bozo::definitions::type` and
+ * `bozo::definitions::array` specialization. The library has all the necessary information
  * (like OID, size and so on) about built-in types of PostgreSQL. To make C++ types binding
  * easer and reduce a boilerplate code the macro exists.
  *
@@ -30,19 +30,19 @@
  *
  * E.g. a definition of `std::string` as PostgreSQL `text` type may look like this:
 @code
-#include <ozo/pg/definitions.h>
+#include <bozo/pg/definitions.h>
 #include <string>
 
-OZO_PG_BIND_TYPE(std::string, "text")
+BOZO_PG_BIND_TYPE(std::string, "text")
 @endcode
  *
- * @sa OZO_PG_DEFINE_CUSTOM_TYPE
+ * @sa BOZO_PG_DEFINE_CUSTOM_TYPE
  *
  * ### Known Types
  *
  * | Type | Size | Has Array | Short Description |
  * |------|------|-----------|-------------------|
- * | null | none | no        | OZO pseudo-type definition for null representation |
+ * | null | none | no        | BOZO pseudo-type definition for null representation |
 {% for entry in entries.values() %}
 {%    set is_array = entry.typelem and entries[entry.typelem].typarray == entry.typname %}
 {%    if entry.typname not in ignore_types and not is_array %}
@@ -51,24 +51,24 @@ OZO_PG_BIND_TYPE(std::string, "text")
 {% endfor %}
  * @ingroup group-type_system-mapping
  */
-#ifdef OZO_DOCUMENTATION
-#define OZO_PG_BIND_TYPE(CppType, PgTypeName)
+#ifdef BOZO_DOCUMENTATION
+#define BOZO_PG_BIND_TYPE(CppType, PgTypeName)
 #else
-#define OZO_PG_BIND_TYPE(CppType, PgTypeName) \
-    namespace ozo::definitions {\
+#define BOZO_PG_BIND_TYPE(CppType, PgTypeName) \
+    namespace bozo::definitions {\
     template <>\
-    struct type<CppType> : ozo::pg::type_definition<decltype(PgTypeName##_s)> {\
+    struct type<CppType> : bozo::pg::type_definition<decltype(PgTypeName##_s)> {\
         static_assert(std::is_same_v<typename type::size, dynamic_size>\
             || type::size::value == null_state_size\
             || static_cast<size_type>(sizeof(CppType)) == type::size::value,\
             #CppType " type size does not match to declared size");\
     };\
     template <>\
-    struct array<CppType> : ozo::pg::array_definition<decltype(PgTypeName##_s)>{};\
+    struct array<CppType> : bozo::pg::array_definition<decltype(PgTypeName##_s)>{};\
     }
 #endif
 
-namespace ozo::pg {
+namespace bozo::pg {
 
 namespace hana = boost::hana;
 using namespace hana::literals;
@@ -77,7 +77,7 @@ template <typename Name>
 struct type_definition {
     static_assert(std::is_void_v<Name>,
     "Unknown PostgreSQL built-in type, should be completely defined "
-    "via ozo::definitions::type specialization.");
+    "via bozo::definitions::type specialization.");
 };
 
 template <typename Name, typename = hana::when<true>>
@@ -124,4 +124,4 @@ struct {{type_definition}}<decltype("{{typname}}"_s)> {
 
 {%     endif %}
 {% endfor %}
-} // namespace ozo::pg
+} // namespace bozo::pg

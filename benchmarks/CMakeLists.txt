@@ -5,8 +5,8 @@ if(CCACHE_FOUND)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
 endif()
 
-add_executable(ozo_benchmark ozo_benchmark.cpp)
-target_link_libraries(ozo_benchmark ozo)
+add_executable(bozo_benchmark bozo_benchmark.cpp)
+target_link_libraries(bozo_benchmark bozo)
 
 find_package(Boost COMPONENTS coroutine context system thread atomic program_options REQUIRED)
 
@@ -24,22 +24,22 @@ ExternalProject_Add(
 include_directories(SYSTEM ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 # enable a bunch of warnings and make them errors
-target_compile_options(ozo_benchmark PRIVATE -Wall -Wextra -Wsign-compare -pedantic -Werror)
+target_compile_options(bozo_benchmark PRIVATE -Wall -Wextra -Wsign-compare -pedantic -Werror)
 
 # ignore specific error for clang
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    target_compile_options(ozo_benchmark PRIVATE -Wno-ignored-optimization-argument)
+    target_compile_options(bozo_benchmark PRIVATE -Wno-ignored-optimization-argument)
 endif()
 
-add_executable(ozo_benchmark_performance performance.cpp)
-add_dependencies(ozo_benchmark_performance NlohmannJson)
-target_link_libraries(ozo_benchmark_performance ozo)
-target_link_libraries(ozo_benchmark_performance Boost::program_options)
+add_executable(bozo_benchmark_performance performance.cpp)
+add_dependencies(bozo_benchmark_performance NlohmannJson)
+target_link_libraries(bozo_benchmark_performance bozo)
+target_link_libraries(bozo_benchmark_performance Boost::program_options)
 
 # enable a bunch of warnings and make them errors
-target_compile_options(ozo_benchmark_performance PRIVATE -Wall -Wextra -Wsign-compare -pedantic -Werror)
+target_compile_options(bozo_benchmark_performance PRIVATE -Wall -Wextra -Wsign-compare -pedantic -Werror)
 
 # ignore specific error for clang
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
-    target_compile_options(ozo_benchmark_performance PRIVATE -Wno-ignored-optimization-argument)
+    target_compile_options(bozo_benchmark_performance PRIVATE -Wno-ignored-optimization-argument)
 endif()

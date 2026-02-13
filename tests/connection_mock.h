@@ -2,11 +2,11 @@
 
 #include "test_asio.h"
 
-#include <ozo/impl/io.h>
-#include <ozo/impl/transaction.h>
-#include <ozo/time_traits.h>
+#include <bozo/impl/io.h>
+#include <bozo/impl/transaction.h>
+#include <bozo/time_traits.h>
 
-namespace ozo::tests {
+namespace bozo::tests {
 
 struct pg_result {
     ExecStatusType status;
@@ -125,7 +125,7 @@ struct native_conn_handle {
 
     void assert_not_null() const {
         if (!mock_) {
-            throw std::invalid_argument("ozo::tests::native_conn_handle is in null state");
+            throw std::invalid_argument("bozo::tests::native_conn_handle is in null state");
         }
     }
 };
@@ -138,7 +138,7 @@ inline const char* PQresultErrorField(const pg_result* res, int) noexcept {
     return res->error;
 }
 
-using ozo::empty_oid_map;
+using bozo::empty_oid_map;
 
 struct cancel_handle_mock {
     MOCK_METHOD0(dispatch_cancel, std::tuple<error_code, std::string>());
@@ -151,12 +151,12 @@ struct cancel_handle_mock {
 struct connection_mock {
     MOCK_METHOD0(cancel, void());
     MOCK_CONST_METHOD0(is_bad, bool());
-    MOCK_METHOD0(close, ozo::error_code());
+    MOCK_METHOD0(close, bozo::error_code());
     MOCK_METHOD1(async_wait_write, void(std::function<void(error_code)>));
     MOCK_METHOD1(async_wait_read, void(std::function<void(error_code)>));
 
     MOCK_METHOD1(start_connection, native_conn_handle(const std::string&));
-    MOCK_METHOD0(assign, ozo::error_code());
+    MOCK_METHOD0(assign, bozo::error_code());
     MOCK_METHOD0(async_request, void());
     MOCK_METHOD0(async_execute, void());
     MOCK_METHOD0(request_oid_map, void());
@@ -167,9 +167,9 @@ using connection_gmock = connection_mock;
 
 struct empty_query {};
 
-} // namespace ozo::tests
+} // namespace bozo::tests
 
-namespace ozo {
+namespace bozo {
 
 template <>
 struct get_query_text_impl<tests::empty_query> {
@@ -188,20 +188,20 @@ struct get_query_params_impl<tests::empty_query> {
 namespace pg {
 
 template<>
-struct safe_handle<ozo::tests::pg_result> {
-    using type = ozo::tests::pg_result*;
+struct safe_handle<bozo::tests::pg_result> {
+    using type = bozo::tests::pg_result*;
 };
 } // namespace pg
-} // namespace ozo
+} // namespace bozo
 
-namespace ozo::tests {
+namespace bozo::tests {
 
 static_assert(Query<empty_query>, "empty_query is not a Query");
 
 template <typename OidMap = empty_oid_map>
 struct connection {
-    using handle_type = ozo::tests::native_conn_handle;
-    using native_handle_type = ozo::tests::PGconn_mock*;
+    using handle_type = bozo::tests::native_conn_handle;
+    using native_handle_type = bozo::tests::PGconn_mock*;
     using error_context_type = std::string;
     using oid_map_type = OidMap;
     using executor_type = io_context::executor_type;
@@ -236,15 +236,15 @@ struct connection {
         return c.mock_->start_connection(conninfo);
     }
 
-    ozo::error_code assign(handle_type&& handle) {
-        ozo::error_code ec = mock_->assign();
+    bozo::error_code assign(handle_type&& handle) {
+        bozo::error_code ec = mock_->assign();
         if (!ec) {
             handle_ = std::move(handle);
         }
         return ec;
     }
 
-    ozo::error_code close() { return mock_->close(); }
+    bozo::error_code close() { return mock_->close(); }
 
     native_conn_handle release() {
         return std::move(handle_);
@@ -259,12 +259,12 @@ struct connection {
     }
 
     template <typename Q, typename Out, typename Handler>
-    friend void async_request(std::shared_ptr<connection>&& provider, Q&&, const ozo::time_traits::duration&, Out&&, Handler&&) {
+    friend void async_request(std::shared_ptr<connection>&& provider, Q&&, const bozo::time_traits::duration&, Out&&, Handler&&) {
         provider->mock_->async_request();
     }
 
     template <typename Q, typename Handler>
-    friend void async_execute(std::shared_ptr<connection>& provider, Q&&, const ozo::time_traits::duration&, Handler&&) {
+    friend void async_execute(std::shared_ptr<connection>& provider, Q&&, const bozo::time_traits::duration&, Handler&&) {
         provider->mock_->async_execute();
     }
 
@@ -274,45 +274,45 @@ struct connection {
     }
 
     template <typename Q, typename Options, typename Handler>
-    friend void async_execute(ozo::transaction<std::shared_ptr<connection>, Options>&& transaction, Q&&,
-            const ozo::time_traits::duration&, Handler&&) {
+    friend void async_execute(bozo::transaction<std::shared_ptr<connection>, Options>&& transaction, Q&&,
+            const bozo::time_traits::duration&, Handler&&) {
         release_connection(std::move(transaction))->mock_->async_execute();
     }
 
     template <typename WaitHandler>
     void async_wait_write(WaitHandler&& h) {
         mock_->async_wait_write([h = std::forward<WaitHandler>(h)] (auto e) {
-            asio::post(ozo::detail::bind(std::move(h), std::move(e)));
+            asio::post(bozo::detail::bind(std::move(h), std::move(e)));
         });
     }
 
     template <typename WaitHandler>
     void async_wait_read(WaitHandler&& h) {
         mock_->async_wait_read([h = std::forward<WaitHandler>(h)] (auto e) {
-            asio::post(ozo::detail::bind(std::move(h), std::move(e)));
+            asio::post(bozo::detail::bind(std::move(h), std::move(e)));
         });
     }
 };
 
-} // namespace ozo::tests
+} // namespace bozo::tests
 
-namespace ozo {
+namespace bozo {
 
 template <typename OidMap>
 struct is_connection<tests::connection<OidMap>> : std::true_type {};
 
-} // namespace ozo
+} // namespace bozo
 
-namespace ozo::tests {
+namespace bozo::tests {
 
 template <typename ...Ts>
 using connection_ptr = std::shared_ptr<connection<Ts...>>;
 
-static_assert(ozo::Connection<connection<>>,
+static_assert(bozo::Connection<connection<>>,
     "connection does not meet Connection requirements");
-static_assert(ozo::Connection<connection<>>,
+static_assert(bozo::Connection<connection<>>,
     "connection does not meet Connection requirements");
-static_assert(ozo::Connection<connection_ptr<>>,
+static_assert(bozo::Connection<connection_ptr<>>,
     "connection_ptr does not meet Connection requirements");
 
 template <typename OidMap = empty_oid_map>
@@ -327,4 +327,4 @@ inline auto make_connection(connection_mock& mock, io_context& io,
         });
 }
 
-} // namespace ozo::tests
+} // namespace bozo::tests

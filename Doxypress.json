@@ -431,7 +431,7 @@
         ],
         "macro-expansion": true,
         "predefined-macros": [
-            "OZO_DOCUMENTATION"
+            "BOZO_DOCUMENTATION"
         ],
         "search-includes": false,
         "skip-function-macros": true
@@ -439,7 +439,7 @@
     "project": {
         "project-brief": "Asychronous header-only Boost.Asio-based PostgreSQL C++17 type-safe library. And yes, it is fast!",
         "project-logo": "",
-        "project-name": "OZO",
+        "project-name": "BOZO",
         "project-version": ""
     },
     "source": {

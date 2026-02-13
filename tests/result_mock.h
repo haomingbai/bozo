@@ -1,17 +1,17 @@
 #pragma once
 
-#include <ozo/result.h>
+#include <bozo/result.h>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-namespace ozo::tests {
+namespace bozo::tests {
 
 using namespace testing;
 
 struct pg_result_mock {
-    MOCK_CONST_METHOD1(field_type, ozo::oid_t(int column));
-    MOCK_CONST_METHOD1(field_format, ozo::impl::result_format(int column));
+    MOCK_CONST_METHOD1(field_type, bozo::oid_t(int column));
+    MOCK_CONST_METHOD1(field_format, bozo::impl::result_format(int column));
     MOCK_CONST_METHOD2(get_value, const char*(int row, int column));
     MOCK_CONST_METHOD2(get_length, std::size_t(int row, int column));
     MOCK_CONST_METHOD2(get_isnull, bool(int row, int column));
@@ -19,11 +19,11 @@ struct pg_result_mock {
     MOCK_CONST_METHOD0(nfields, int());
     MOCK_CONST_METHOD0(ntuples, int());
 
-    friend ozo::oid_t pq_field_type(const pg_result_mock& m, int column) {
+    friend bozo::oid_t pq_field_type(const pg_result_mock& m, int column) {
         return m.field_type(column);
     }
 
-    friend ozo::impl::result_format pq_field_format(const pg_result_mock& m, int column) {
+    friend bozo::impl::result_format pq_field_format(const pg_result_mock& m, int column) {
         return m.field_format(column);
     }
 
@@ -52,4 +52,4 @@ struct pg_result_mock {
     }
 };
 
-} // namespace ozo::tests
+} // namespace bozo::tests

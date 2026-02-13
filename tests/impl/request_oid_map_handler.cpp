@@ -1,26 +1,26 @@
 #include <connection_mock.h>
 #include <test_error.h>
 
-#include <ozo/impl/async_connect.h>
+#include <bozo/impl/async_connect.h>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-namespace ozo::tests {
+namespace bozo::tests {
 
 struct custom_type {};
 
-} // namespace ozo::tests
+} // namespace bozo::tests
 
-OZO_PG_DEFINE_CUSTOM_TYPE(ozo::tests::custom_type, "custom_type")
+BOZO_PG_DEFINE_CUSTOM_TYPE(bozo::tests::custom_type, "custom_type")
 
 namespace {
 
 using namespace testing;
-using namespace ozo::tests;
+using namespace bozo::tests;
 
-using ozo::empty_oid_map;
-using ozo::error_code;
+using bozo::empty_oid_map;
+using bozo::error_code;
 
 struct connection_mock {
     MOCK_METHOD0(request_oid_map, void());
@@ -58,31 +58,31 @@ struct request_oid_map_handler : Test {
 };
 
 TEST_F(request_oid_map_handler, should_request_for_oid_when_oid_map_is_not_empty) {
-    auto conn = make_connection(ozo::register_types<custom_type>());
+    auto conn = make_connection(bozo::register_types<custom_type>());
     auto callback = make_callback(conn);
 
     EXPECT_CALL(connection, request_oid_map()).WillOnce(Return());
 
-    ozo::impl::apply_oid_map_request<decltype(conn)>(wrap(callback))(error_code{}, std::move(conn));
+    bozo::impl::apply_oid_map_request<decltype(conn)>(wrap(callback))(error_code{}, std::move(conn));
 }
 
 TEST_F(request_oid_map_handler, should_not_request_for_oid_when_oid_map_is_not_empty_but_error_occured) {
-    auto conn = make_connection(ozo::register_types<custom_type>());
+    auto conn = make_connection(bozo::register_types<custom_type>());
     auto callback = make_callback(conn);
 
     EXPECT_CALL(callback, call(error_code{error::error}, _))
         .WillOnce(Return());
 
-    ozo::impl::apply_oid_map_request<decltype(conn)>(wrap(callback))(error::error, std::move(conn));
+    bozo::impl::apply_oid_map_request<decltype(conn)>(wrap(callback))(error::error, std::move(conn));
 }
 
 TEST_F(request_oid_map_handler, should_not_request_for_oid_when_oid_map_is_empty) {
-    auto conn = make_connection(ozo::register_types<>());
+    auto conn = make_connection(bozo::register_types<>());
     auto callback = make_callback(conn);
 
     EXPECT_CALL(callback, call(error_code{}, _)).WillOnce(Return());
 
-    ozo::impl::apply_oid_map_request<decltype(conn)>(wrap(callback))(error_code{}, std::move(conn));
+    bozo::impl::apply_oid_map_request<decltype(conn)>(wrap(callback))(error_code{}, std::move(conn));
 }
 
 } // namespace

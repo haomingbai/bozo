@@ -1,4 +1,4 @@
-#include <ozo/failover/role_based.h>
+#include <bozo/failover/role_based.h>
 
 #include "../test_error.h"
 
@@ -11,8 +11,8 @@
 namespace {
 
 using namespace testing;
-using time_point = ozo::time_traits::time_point;
-using duration = ozo::time_traits::duration;
+using time_point = bozo::time_traits::time_point;
+using duration = bozo::time_traits::duration;
 using namespace std::chrono_literals;
 namespace hana = boost::hana;
 
@@ -29,13 +29,13 @@ struct connection_mock {
     }
 };
 
-static constexpr ozo::failover::role<class test_role_tag> test_role;
-static constexpr ozo::failover::role<class another_test_role_tag> another_test_role;
+static constexpr bozo::failover::role<class test_role_tag> test_role;
+static constexpr bozo::failover::role<class another_test_role_tag> another_test_role;
 
 struct role_based_connection_source_mock {
-    MOCK_CONST_METHOD1(call, void(std::function<void(ozo::error_code, connection_mock*)>));
-    MOCK_CONST_METHOD1(rebind_role, void(std::decay_t<decltype(ozo::failover::master)>));
-    MOCK_CONST_METHOD1(rebind_role, void(std::decay_t<decltype(ozo::failover::replica)>));
+    MOCK_CONST_METHOD1(call, void(std::function<void(bozo::error_code, connection_mock*)>));
+    MOCK_CONST_METHOD1(rebind_role, void(std::decay_t<decltype(bozo::failover::master)>));
+    MOCK_CONST_METHOD1(rebind_role, void(std::decay_t<decltype(bozo::failover::replica)>));
     MOCK_CONST_METHOD1(rebind_role, void(std::decay_t<decltype(test_role)>));
     MOCK_CONST_METHOD0(move, void());
 };
@@ -75,7 +75,7 @@ struct unsupported_role_connection_source {
 
 } // namespace
 
-namespace ozo {
+namespace bozo {
 // Some cheats about connection_mock which is not a connection
 // at all.
 template <>
@@ -97,26 +97,26 @@ struct is_nullable<::testing::StrictMock<connection_mock>*> : std::true_type {};
 namespace {
 
 TEST(role_based_connection_provider__is_supported, should_return_true_for_connection_source_which_rebinds_for_role) {
-    using provider = ozo::failover::role_based_connection_provider<role_based_connection_source<class dummy>>;
-    EXPECT_TRUE(provider::is_supported(ozo::failover::master));
+    using provider = bozo::failover::role_based_connection_provider<role_based_connection_source<class dummy>>;
+    EXPECT_TRUE(provider::is_supported(bozo::failover::master));
 }
 
 TEST(role_based_connection_provider__is_supported, should_return_false_for_connection_source_which_does_not_rebind_for_role) {
-    using provider = ozo::failover::role_based_connection_provider<unsupported_role_connection_source>;
-    EXPECT_FALSE(provider::is_supported(ozo::failover::master));
+    using provider = bozo::failover::role_based_connection_provider<unsupported_role_connection_source>;
+    EXPECT_FALSE(provider::is_supported(bozo::failover::master));
 }
 
 TEST(role_based_connection_provider__rebind, should_call_source_rebind_and_return_new_provider_for_role) {
     role_based_connection_source_mock source;
     boost::asio::io_context io;
-    auto provider = ozo::failover::role_based_connection_provider{
+    auto provider = bozo::failover::role_based_connection_provider{
                     role_based_connection_source<class dummy> {std::addressof(source)},
                     io
                 };
-    EXPECT_CALL(source, rebind_role(An<std::decay_t<decltype(ozo::failover::master)>>()));
-    auto new_provider = provider.rebind_role(ozo::failover::master);
-    using new_provider_type = ozo::failover::role_based_connection_provider<
-                    role_based_connection_source<std::decay_t<decltype(ozo::failover::master)>>
+    EXPECT_CALL(source, rebind_role(An<std::decay_t<decltype(bozo::failover::master)>>()));
+    auto new_provider = provider.rebind_role(bozo::failover::master);
+    using new_provider_type = bozo::failover::role_based_connection_provider<
+                    role_based_connection_source<std::decay_t<decltype(bozo::failover::master)>>
                 >;
     static_assert(std::is_same_v<decltype(new_provider), new_provider_type>,
         "rebind_role() should return provider specialized with a new source type"
@@ -126,15 +126,15 @@ TEST(role_based_connection_provider__rebind, should_call_source_rebind_and_retur
 TEST(role_based_connection_provider__rebind, should_move_source_call_source_rebind_and_return_new_provider_for_role) {
     role_based_connection_source_mock source;
     boost::asio::io_context io;
-    auto provider = ozo::failover::role_based_connection_provider{
+    auto provider = bozo::failover::role_based_connection_provider{
                     role_based_connection_source<class dummy> {std::addressof(source)},
                     io
                 };
     EXPECT_CALL(source, move());
-    EXPECT_CALL(source, rebind_role(An<std::decay_t<decltype(ozo::failover::master)>>()));
-    auto new_provider = std::move(provider).rebind_role(ozo::failover::master);
-    using new_provider_type = ozo::failover::role_based_connection_provider<
-                    role_based_connection_source<std::decay_t<decltype(ozo::failover::master)>>
+    EXPECT_CALL(source, rebind_role(An<std::decay_t<decltype(bozo::failover::master)>>()));
+    auto new_provider = std::move(provider).rebind_role(bozo::failover::master);
+    using new_provider_type = bozo::failover::role_based_connection_provider<
+                    role_based_connection_source<std::decay_t<decltype(bozo::failover::master)>>
                 >;
     static_assert(std::is_same_v<decltype(new_provider), new_provider_type>,
         "rebind_role() should return provider specialized with a new source type"
@@ -149,16 +149,16 @@ struct role_based_try__initiate_next_try : Test {
     boost::asio::io_context io;
 
     auto provider() {
-        return ozo::failover::role_based_connection_provider{
+        return bozo::failover::role_based_connection_provider{
             role_based_connection_source<class dummy>{std::addressof(source)},
             io
         };
     }
 
     struct handler_mock {
-        MOCK_METHOD2(call, void(ozo::error_code, connection_mock*));
+        MOCK_METHOD2(call, void(bozo::error_code, connection_mock*));
         template <typename Fallback>
-        void operator() (ozo::error_code ec, connection_mock* conn, const Fallback&) {
+        void operator() (bozo::error_code ec, connection_mock* conn, const Fallback&) {
             call(ec, conn);
         }
     };
@@ -170,7 +170,7 @@ struct role_based_try__initiate_next_try : Test {
     };
 
     auto ctx() {
-        return ozo::failover::basic_context(provider(), ozo::none);
+        return bozo::failover::basic_context(provider(), bozo::none);
     }
 
     connection_mock& connection() { return conn;}
@@ -181,148 +181,148 @@ struct role_based_try__initiate_next_try : Test {
 
     StrictMock<initiator_mock> initiator;
 
-    using opt = ozo::failover::role_based_options;
+    using opt = bozo::failover::role_based_options;
 };
 
 } // namespace
 
-namespace ozo::failover {
+namespace bozo::failover {
 template <>
 struct can_recover_impl<std::decay_t<decltype(::test_role)>> {
     static auto apply(decltype(::test_role), const error_code& ec) {
-        return ozo::tests::error::error == ec;
+        return bozo::tests::error::error == ec;
     }
 };
 
 template <>
 struct can_recover_impl<std::decay_t<decltype(::another_test_role)>> {
     static auto apply(decltype(::another_test_role), const error_code& ec) {
-        return ozo::tests::error::another_error == ec;
+        return bozo::tests::error::another_error == ec;
     }
 };
-} // namespace ozo::failover
+} // namespace bozo::failover
 
 namespace {
 
 TEST_F(role_based_try__initiate_next_try, should_call_initiator_with_next_try_for_matching_error) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role)
         ), ctx()
     );
     EXPECT_CALL(initiator, call());
-    role_based_try.initiate_next_try(ozo::tests::error::error, null_conn, std::cref(initiator));
+    role_based_try.initiate_next_try(bozo::tests::error::error, null_conn, std::cref(initiator));
 }
 
 TEST_F(role_based_try__initiate_next_try, should_call_initiator_with_next_matched_try_for_matching_error) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role, another_test_role)
         ), ctx()
     );
     EXPECT_CALL(initiator, call());
-    role_based_try.initiate_next_try(ozo::tests::error::another_error, null_conn, std::cref(initiator));
+    role_based_try.initiate_next_try(bozo::tests::error::another_error, null_conn, std::cref(initiator));
 }
 
 TEST_F(role_based_try__initiate_next_try, should_not_call_initiator_for_non_matching_error) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role)
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::another_error, null_conn, std::cref(initiator));
+    role_based_try.initiate_next_try(bozo::tests::error::another_error, null_conn, std::cref(initiator));
 }
 
 TEST_F(role_based_try__initiate_next_try, should_not_call_initiator_for_no_roles_left) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role)
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::error, null_conn, std::cref(initiator));
+    role_based_try.initiate_next_try(bozo::tests::error::error, null_conn, std::cref(initiator));
 }
 
 TEST_F(role_based_try__initiate_next_try, should_call_on_fallback_handler_for_matching_error_and_fallback) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role),
             opt::on_fallback=std::ref(handler)
         ), ctx()
     );
-    EXPECT_CALL(handler, call(ozo::error_code{ozo::tests::error::error}, null_conn));
-    role_based_try.initiate_next_try(ozo::tests::error::error, null_conn, ozo::none);
+    EXPECT_CALL(handler, call(bozo::error_code{bozo::tests::error::error}, null_conn));
+    role_based_try.initiate_next_try(bozo::tests::error::error, null_conn, bozo::none);
 }
 
 TEST_F(role_based_try__initiate_next_try, should_not_call_on_fallback_handler_for_non_matching_error) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role),
             opt::on_fallback=std::ref(handler)
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::another_error, null_conn, ozo::none);
+    role_based_try.initiate_next_try(bozo::tests::error::another_error, null_conn, bozo::none);
 }
 
 TEST_F(role_based_try__initiate_next_try, should_close_connection_on_retry_if_option_is_omitted) {
     EXPECT_CALL(conn, close_connection());
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role)
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::error, connection(), ozo::none);
+    role_based_try.initiate_next_try(bozo::tests::error::error, connection(), bozo::none);
 }
 
 TEST_F(role_based_try__initiate_next_try, should_close_connection_on_retry_if_option_is_true) {
     EXPECT_CALL(conn, close_connection());
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role),
             opt::close_connection=true
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::error, connection(), ozo::none);
+    role_based_try.initiate_next_try(bozo::tests::error::error, connection(), bozo::none);
 }
 
 TEST_F(role_based_try__initiate_next_try, should_not_close_connection_on_retry_if_option_is_false) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role),
             opt::close_connection=false
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::error, connection(), ozo::none);
+    role_based_try.initiate_next_try(bozo::tests::error::error, connection(), bozo::none);
 }
 
 TEST_F(role_based_try__initiate_next_try, should_close_connection_on_no_retry_if_option_is_omitted) {
     EXPECT_CALL(conn, close_connection());
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role)
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::error, connection(), ozo::none);
+    role_based_try.initiate_next_try(bozo::tests::error::error, connection(), bozo::none);
 }
 
 TEST_F(role_based_try__initiate_next_try, should_close_connection_on_no_retry_if_option_is_true) {
     EXPECT_CALL(conn, close_connection());
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role),
             opt::close_connection=true
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::error, connection(), ozo::none);
+    role_based_try.initiate_next_try(bozo::tests::error::error, connection(), bozo::none);
 }
 
 TEST_F(role_based_try__initiate_next_try, should_not_close_connection_on_no_retry_if_option_is_false) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role),
             opt::close_connection=false
         ), ctx()
     );
-    role_based_try.initiate_next_try(ozo::tests::error::error, connection(), ozo::none);
+    role_based_try.initiate_next_try(bozo::tests::error::error, connection(), bozo::none);
 }
 
 
@@ -331,26 +331,26 @@ struct role_based_try__get_context : Test {
     boost::asio::io_context io;
 
     auto provider() {
-        return ozo::failover::role_based_connection_provider{
+        return bozo::failover::role_based_connection_provider{
             role_based_connection_source<class dummy>{std::addressof(source)},
             io
         };
     }
 
-    using opt = ozo::failover::role_based_options;
+    using opt = bozo::failover::role_based_options;
 };
 
 TEST_F(role_based_try__get_context, should_return_rebound_provider_form_context) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role)
         ),
-        ozo::failover::basic_context(provider(), ozo::none)
+        bozo::failover::basic_context(provider(), bozo::none)
     );
     EXPECT_CALL(source, rebind_role(An<std::decay_t<decltype(test_role)>>()));
     auto new_provider = role_based_try.get_context()[hana::size_c<0>];
 
-    using new_provider_type = ozo::failover::role_based_connection_provider<
+    using new_provider_type = bozo::failover::role_based_connection_provider<
                     role_based_connection_source<std::decay_t<decltype(test_role)>>>;
     static_assert(std::is_same_v<decltype(new_provider), new_provider_type>,
         "rebind_role() should return provider specialized with a new source type"
@@ -358,22 +358,22 @@ TEST_F(role_based_try__get_context, should_return_rebound_provider_form_context)
 }
 
 TEST_F(role_based_try__get_context, should_return_calculated_time_out_as_divided_for_two_tries_form_context) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role, test_role)
         ),
-        ozo::failover::basic_context(provider(), 4s)
+        bozo::failover::basic_context(provider(), 4s)
     );
     EXPECT_CALL(source, rebind_role(An<std::decay_t<decltype(test_role)>>()));
     EXPECT_EQ(role_based_try.get_context()[hana::size_c<1>], 2s);
 }
 
 TEST_F(role_based_try__get_context, should_return_whole_time_out_for_two_single_try_form_context) {
-    auto role_based_try = ozo::failover::role_based_try(
-        ozo::make_options(
+    auto role_based_try = bozo::failover::role_based_try(
+        bozo::make_options(
             opt::roles=hana::make_tuple(test_role)
         ),
-        ozo::failover::basic_context(provider(), 4s)
+        bozo::failover::basic_context(provider(), 4s)
     );
     EXPECT_CALL(source, rebind_role(An<std::decay_t<decltype(test_role)>>()));
     EXPECT_EQ(role_based_try.get_context()[hana::size_c<1>], 4s);

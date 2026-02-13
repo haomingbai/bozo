@@ -1,4 +1,4 @@
-#include <ozo/failover/strategy.h>
+#include <bozo/failover/strategy.h>
 
 #include "../test_error.h"
 
@@ -11,32 +11,32 @@ struct connection_mock {};
 struct provider_mock {};
 
 struct try_mock {
-    MOCK_CONST_METHOD2(get_next_try, try_mock*(ozo::error_code, connection_mock*));
-    using context = boost::hana::tuple<provider_mock*, ozo::time_traits::duration, int, std::string>;
+    MOCK_CONST_METHOD2(get_next_try, try_mock*(bozo::error_code, connection_mock*));
+    using context = boost::hana::tuple<provider_mock*, bozo::time_traits::duration, int, std::string>;
     MOCK_CONST_METHOD0(get_context, context());
 };
 
 struct handler_mock {
     struct wrapper {
         handler_mock const* mock_ = nullptr;
-        void operator () (ozo::error_code ec, connection_mock* conn) const {
+        void operator () (bozo::error_code ec, connection_mock* conn) const {
             mock_->call(ec, conn);
         };
         bool operator == (const wrapper& rhs) const {
             return mock_ == rhs.mock_;
         }
     };
-    MOCK_CONST_METHOD2(call, void(ozo::error_code, connection_mock*));
+    MOCK_CONST_METHOD2(call, void(bozo::error_code, connection_mock*));
     auto f() const { return wrapper{this}; }
 };
 
 struct operation {
-    using handler_type = ozo::failover::detail::continuation<operation, try_mock*, decltype(std::declval<handler_mock>().f())>;
+    using handler_type = bozo::failover::detail::continuation<operation, try_mock*, decltype(std::declval<handler_mock>().f())>;
     struct initiator_mock {
         MOCK_CONST_METHOD5(call, void(
             handler_type,
             provider_mock* provider,
-            ozo::time_traits::duration t,
+            bozo::time_traits::duration t,
             int arg1,
             std::string arg2
         ));
@@ -47,7 +47,7 @@ struct operation {
         initiator_mock * mock = nullptr;
         initiator_type(initiator_mock* mock) : mock(mock) {}
 
-        void operator() (handler_type h, provider_mock* provider, ozo::time_traits::duration t, int arg1, std::string arg2) {
+        void operator() (handler_type h, provider_mock* provider, bozo::time_traits::duration t, int arg1, std::string arg2) {
             if (!mock) {
                 throw std::invalid_argument("mock should not be nullptr");
             }
@@ -68,7 +68,7 @@ struct operation {
 
 } // namespace
 
-namespace ozo {
+namespace bozo {
 // Some cheats about connection_mock which is not a connection
 // at all.
 template <>
@@ -81,7 +81,7 @@ template <>
 struct is_nullable<try_mock*> : std::true_type {};
 
 template <>
-struct unwrap_impl<try_mock*> : ozo::detail::functional::dereference {};
+struct unwrap_impl<try_mock*> : bozo::detail::functional::dereference {};
 
 namespace failover::detail {
 
@@ -91,7 +91,7 @@ inline bool operator == (const continuation<Ts...>& lhs, const continuation<Ts..
 }
 
 } // namespace failover::detail
-} // namespace ozo
+} // namespace bozo
 
 namespace {
 
@@ -109,34 +109,34 @@ struct continuation : Test {
 };
 
 TEST_F(continuation, should_call_handler_if_called_with_no_error) {
-    EXPECT_CALL(handler, call(ozo::error_code{}, std::addressof(conn)));
+    EXPECT_CALL(handler, call(bozo::error_code{}, std::addressof(conn)));
 
-    auto continuation = ozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()};
-    continuation(ozo::error_code{}, std::addressof(conn));
+    auto continuation = bozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()};
+    continuation(bozo::error_code{}, std::addressof(conn));
 }
 
 TEST_F(continuation, should_call_handler_if_called_with_error_and_no_next_try) {
     InSequence s;
-    EXPECT_CALL(a_try, get_next_try(ozo::error_code{ozo::tests::error::error}, std::addressof(conn)))
+    EXPECT_CALL(a_try, get_next_try(bozo::error_code{bozo::tests::error::error}, std::addressof(conn)))
         .WillOnce(Return(nullptr));
-    EXPECT_CALL(handler, call(ozo::error_code{ozo::tests::error::error}, std::addressof(conn)));
+    EXPECT_CALL(handler, call(bozo::error_code{bozo::tests::error::error}, std::addressof(conn)));
 
-    auto continuation = ozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()};
-    continuation(ozo::error_code{ozo::tests::error::error}, std::addressof(conn));
+    auto continuation = bozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()};
+    continuation(bozo::error_code{bozo::tests::error::error}, std::addressof(conn));
 }
 
 TEST_F(continuation, should_initiate_operation_with_context_and_continuation_if_called_with_error_and_has_next_try) {
     InSequence s;
-    EXPECT_CALL(a_try, get_next_try(ozo::error_code{ozo::tests::error::error}, std::addressof(conn)))
+    EXPECT_CALL(a_try, get_next_try(bozo::error_code{bozo::tests::error::error}, std::addressof(conn)))
         .WillOnce(Return(std::addressof(a_try)));
     EXPECT_CALL(a_try, get_context())
         .WillOnce(Return(boost::hana::make_tuple(std::addressof(provider), 3s, 42, "some string"s)));
     EXPECT_CALL(initiator, call(
-        ozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()},
-        std::addressof(provider), ozo::time_traits::duration{3s}, 42, "some string"s));
+        bozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()},
+        std::addressof(provider), bozo::time_traits::duration{3s}, 42, "some string"s));
 
-    auto continuation = ozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()};
-    continuation(ozo::error_code{ozo::tests::error::error}, std::addressof(conn));
+    auto continuation = bozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()};
+    continuation(bozo::error_code{bozo::tests::error::error}, std::addressof(conn));
 }
 
 struct strategy_mock {
@@ -144,7 +144,7 @@ struct strategy_mock {
         const operation&,
         const std::allocator<char>& ,
         provider_mock* provider,
-        ozo::time_traits::duration t,
+        bozo::time_traits::duration t,
         int arg1,
         std::string arg2));
 };
@@ -167,7 +167,7 @@ TEST(operation_initiator, should_call_get_first_try_and_initiate_operation_via_i
 
     EXPECT_CALL(strategy, get_first_try(op, _,
         std::addressof(provider),
-        ozo::time_traits::duration{3s},
+        bozo::time_traits::duration{3s},
         42,
         "some string"s))
         .WillOnce(Return(std::addressof(a_try)));
@@ -176,10 +176,10 @@ TEST(operation_initiator, should_call_get_first_try_and_initiate_operation_via_i
         .WillOnce(Return(boost::hana::make_tuple(std::addressof(provider), 3s, 42, "some string"s)));
 
     EXPECT_CALL(initiator, call(
-        ozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()},
-        std::addressof(provider), ozo::time_traits::duration{3s}, 42, "some string"s));
+        bozo::failover::detail::continuation{op, std::addressof(a_try), handler.f()},
+        std::addressof(provider), bozo::time_traits::duration{3s}, 42, "some string"s));
 
-    ozo::failover::detail::operation_initiator(strategy_impl{std::addressof(strategy)}, op)(
+    bozo::failover::detail::operation_initiator(strategy_impl{std::addressof(strategy)}, op)(
         handler.f(),
         std::addressof(provider),
         3s, 42, "some string"s);

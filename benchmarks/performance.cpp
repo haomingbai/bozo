@@ -1,10 +1,10 @@
 #include "benchmark.h"
 
-#include <ozo/connection_info.h>
-#include <ozo/connection_pool.h>
-#include <ozo/request.h>
-#include <ozo/query_builder.h>
-#include <ozo/shortcuts.h>
+#include <bozo/connection_info.h>
+#include <bozo/connection_pool.h>
+#include <bozo/request.h>
+#include <bozo/query_builder.h>
+#include <bozo/shortcuts.h>
 
 #include <nlohmann/json.hpp>
 
@@ -20,7 +20,7 @@ namespace {
 
 namespace asio = boost::asio;
 
-using benchmark_t = ozo::benchmark::time_limit_benchmark;
+using benchmark_t = bozo::benchmark::time_limit_benchmark;
 
 std::mutex cerr_mutex;
 
@@ -81,22 +81,22 @@ struct benchmark_params {
     std::size_t connections = 0;
     bool parse_result = false;
     bool verbose = false;
-    ozo::time_traits::duration connect_timeout = std::chrono::seconds(1);
-    ozo::time_traits::duration request_timeout = std::chrono::seconds(1);
-    ozo::time_traits::duration idle_timeout = std::chrono::seconds(1);
-    ozo::time_traits::duration lifespan = std::chrono::seconds(1);
+    bozo::time_traits::duration connect_timeout = std::chrono::seconds(1);
+    bozo::time_traits::duration request_timeout = std::chrono::seconds(1);
+    bozo::time_traits::duration idle_timeout = std::chrono::seconds(1);
+    bozo::time_traits::duration lifespan = std::chrono::seconds(1);
 };
 
 struct benchmark_report {
     std::string name;
     std::string query;
-    ozo::benchmark::output output;
-    ozo::benchmark::stats stats;
-    OZO_STD_OPTIONAL<std::size_t> coroutines;
-    OZO_STD_OPTIONAL<std::size_t> threads_number;
-    OZO_STD_OPTIONAL<std::size_t> queue_capacity;
-    OZO_STD_OPTIONAL<std::size_t> connections;
-    OZO_STD_OPTIONAL<bool> parse_result;
+    bozo::benchmark::output output;
+    bozo::benchmark::stats stats;
+    BOZO_STD_OPTIONAL<std::size_t> coroutines;
+    BOZO_STD_OPTIONAL<std::size_t> threads_number;
+    BOZO_STD_OPTIONAL<std::size_t> queue_capacity;
+    BOZO_STD_OPTIONAL<std::size_t> connections;
+    BOZO_STD_OPTIONAL<bool> parse_result;
 };
 
 std::ostream& operator <<(std::ostream& stream, const benchmark_report& value) {
@@ -129,25 +129,25 @@ benchmark_report reopen_connection(const benchmark_params& params, Query query) 
 
     benchmark_report report;
     report.name = __func__;
-    report.query = ozo::to_const_char(ozo::get_text(query));
+    report.query = bozo::to_const_char(bozo::get_text(query));
     report.parse_result = parse_result;
 
     benchmark_t benchmark(1, params.duration);
     benchmark.set_print_progress(params.verbose);
 
     asio::io_context io(1);
-    ozo::connection_info connection_info(params.conn_string);
+    bozo::connection_info connection_info(params.conn_string);
 
     spawn(io, 0, [&] (asio::yield_context yield) {
         while (true) {
-            std::conditional_t<parse_result, std::vector<Row>, ozo::result> result;
-            ozo::error_code ec;
-            const auto connection = ozo::request(connection_info[io], query, params.request_timeout, ozo::into(result), yield[ec]);
+            std::conditional_t<parse_result, std::vector<Row>, bozo::result> result;
+            bozo::error_code ec;
+            const auto connection = bozo::request(connection_info[io], query, params.request_timeout, bozo::into(result), yield[ec]);
             if (ec) {
                 std::cerr << ec.message() << '\n';
                 if (connection) {
-                    std::cerr << ozo::get_error_context(connection) << '\n';
-                    std::cerr << ozo::error_message(connection) << '\n';
+                    std::cerr << bozo::get_error_context(connection) << '\n';
+                    std::cerr << bozo::error_message(connection) << '\n';
                 }
                 std::abort();
             }
@@ -173,26 +173,26 @@ benchmark_report reuse_connection(const benchmark_params& params, Query query) {
 
     benchmark_report report;
     report.name = __func__;
-    report.query = ozo::to_const_char(ozo::get_text(query));
+    report.query = bozo::to_const_char(bozo::get_text(query));
     report.parse_result = parse_result;
 
     benchmark_t benchmark(1, params.duration);
     benchmark.set_print_progress(params.verbose);
 
     asio::io_context io(1);
-    ozo::connection_info connection_info(params.conn_string);
+    bozo::connection_info connection_info(params.conn_string);
 
     spawn(io, 0, [&] (asio::yield_context yield) {
-        auto connection = ozo::get_connection(connection_info[io], params.connect_timeout, yield);
+        auto connection = bozo::get_connection(connection_info[io], params.connect_timeout, yield);
         while (true) {
-            std::conditional_t<parse_result, std::vector<Row>, ozo::result> result;
-            ozo::error_code ec;
-            connection = ozo::request(std::move(connection), query, params.request_timeout, ozo::into(result), yield[ec]);
+            std::conditional_t<parse_result, std::vector<Row>, bozo::result> result;
+            bozo::error_code ec;
+            connection = bozo::request(std::move(connection), query, params.request_timeout, bozo::into(result), yield[ec]);
             if (ec) {
                 std::cerr << ec.message() << '\n';
                 if (connection) {
-                    std::cerr << ozo::get_error_context(connection) << '\n';
-                    std::cerr << ozo::error_message(connection) << '\n';
+                    std::cerr << bozo::get_error_context(connection) << '\n';
+                    std::cerr << bozo::error_message(connection) << '\n';
                 }
                 std::abort();
             }
@@ -218,7 +218,7 @@ benchmark_report use_connection_pool(const benchmark_params& params, Query query
 
     benchmark_report report;
     report.name = __func__;
-    report.query = ozo::to_const_char(ozo::get_text(query));
+    report.query = bozo::to_const_char(bozo::get_text(query));
     report.coroutines = params.coroutines;
     report.queue_capacity = params.queue_capacity;
     report.parse_result = parse_result;
@@ -227,23 +227,23 @@ benchmark_report use_connection_pool(const benchmark_params& params, Query query
     benchmark.set_print_progress(params.verbose);
 
     asio::io_context io(1);
-    const ozo::connection_info connection_info(params.conn_string);
-    ozo::connection_pool_config config;
+    const bozo::connection_info connection_info(params.conn_string);
+    bozo::connection_pool_config config;
     config.capacity = params.coroutines + 1;
     config.queue_capacity = params.queue_capacity;
-    ozo::connection_pool pool(connection_info, config, !ozo::thread_safe);
+    bozo::connection_pool pool(connection_info, config, !bozo::thread_safe);
 
     for (std::size_t token = 0; token < params.coroutines; ++token) {
         spawn(io, token, [&, token] (asio::yield_context yield) {
             while (true) {
-                std::conditional_t<parse_result, std::vector<Row>, ozo::result> result;
-                ozo::error_code ec;
-                const auto connection = ozo::request(pool[io], query, params.request_timeout, ozo::into(result), yield[ec]);
+                std::conditional_t<parse_result, std::vector<Row>, bozo::result> result;
+                bozo::error_code ec;
+                const auto connection = bozo::request(pool[io], query, params.request_timeout, bozo::into(result), yield[ec]);
                 if (ec) {
                     std::cerr << ec.message() << '\n';
                     if (connection) {
-                        std::cerr << ozo::get_error_context(connection) << '\n';
-                        std::cerr << ozo::error_message(connection) << '\n';
+                        std::cerr << bozo::get_error_context(connection) << '\n';
+                        std::cerr << bozo::error_message(connection) << '\n';
                     }
                     std::abort();
                 }
@@ -278,7 +278,7 @@ benchmark_report use_connection_pool_mult_threads(const benchmark_params& params
 
     benchmark_report report;
     report.name = __func__;
-    report.query = ozo::to_const_char(ozo::get_text(query));
+    report.query = bozo::to_const_char(bozo::get_text(query));
     report.coroutines = params.coroutines;
     report.queue_capacity = params.queue_capacity;
     report.threads_number = params.threads_number;
@@ -288,12 +288,12 @@ benchmark_report use_connection_pool_mult_threads(const benchmark_params& params
     benchmark_t benchmark(params.coroutines * params.threads_number, params.duration);
     benchmark.set_print_progress(params.verbose);
 
-    const ozo::connection_info connection_info(params.conn_string);
-    ozo::connection_pool_config config;
+    const bozo::connection_info connection_info(params.conn_string);
+    bozo::connection_pool_config config;
     config.capacity = params.connections;
     config.queue_capacity = params.queue_capacity;
     std::vector<std::unique_ptr<context>> contexts;
-    ozo::connection_pool pool(connection_info, config);
+    bozo::connection_pool pool(connection_info, config);
     std::atomic_size_t finished_coroutines {0};
     std::mutex mutex;
     std::unique_lock<std::mutex> lock(mutex);
@@ -306,16 +306,16 @@ benchmark_report use_connection_pool_mult_threads(const benchmark_params& params
             const auto token = params.coroutines * i + j;
             spawn(io, token, [&, token] (asio::yield_context yield) {
                 while (true) {
-                    std::conditional_t<parse_result, std::vector<Row>, ozo::result> result;
-                    ozo::error_code ec;
+                    std::conditional_t<parse_result, std::vector<Row>, bozo::result> result;
+                    bozo::error_code ec;
                     {
-                        const auto connection = ozo::request(pool[io], query, params.request_timeout, ozo::into(result), yield[ec]);
+                        const auto connection = bozo::request(pool[io], query, params.request_timeout, bozo::into(result), yield[ec]);
                         if (ec) {
                             const std::lock_guard lock(cerr_mutex);
                             std::cerr << "coroutine " << token << ": " << ec.message() << '\n';
                             if (connection) {
-                                std::cerr << "coroutine " << token << ": " << ozo::get_error_context(connection) << '\n';
-                                std::cerr << "coroutine " << token << ": " << ozo::error_message(connection) << '\n';
+                                std::cerr << "coroutine " << token << ": " << bozo::get_error_context(connection) << '\n';
+                                std::cerr << "coroutine " << token << ": " << bozo::error_message(connection) << '\n';
                             }
                             std::abort();
                         }
@@ -400,7 +400,7 @@ benchmark_report run_benchmark(const std::string& name, const benchmark_params& 
 }
 
 benchmark_report run_benchmark(const std::string& name, const benchmark_params& params) {
-    using namespace ozo::literals;
+    using namespace bozo::literals;
 
     const auto simple_query = "SELECT 1"_SQL.build();
     const auto complex_query = (
@@ -413,7 +413,7 @@ benchmark_report run_benchmark(const std::string& name, const benchmark_params& 
         case query_type::simple:
             return run_benchmark<std::tuple<std::int32_t>>(name, params, simple_query);
         case query_type::complex:
-            return run_benchmark<ozo::benchmark::pg_type>(name, params, complex_query);
+            return run_benchmark<bozo::benchmark::pg_type>(name, params, complex_query);
     }
 
     throw std::invalid_argument("Invalid query type: \"" + std::to_string(static_cast<int>(params.query_type)) + "\"");
@@ -463,8 +463,8 @@ struct adl_serializer<std::chrono::steady_clock::duration> {
 };
 
 template <>
-struct adl_serializer<ozo::benchmark::stats> {
-    static void to_json(json& j, const ozo::benchmark::stats& value) {
+struct adl_serializer<bozo::benchmark::stats> {
+    static void to_json(json& j, const bozo::benchmark::stats& value) {
         if (value.mean_request_time) {
             j["mean_request_time"] = *value.mean_request_time;
         }
@@ -502,33 +502,33 @@ struct adl_serializer<ozo::benchmark::stats> {
         }
     }
 
-    static void from_json(const json&, ozo::benchmark::stats&) {
-        throw std::logic_error("ozo::benchmark::stats serialization is not implemented");
+    static void from_json(const json&, bozo::benchmark::stats&) {
+        throw std::logic_error("bozo::benchmark::stats serialization is not implemented");
     }
 };
 
 template <>
-struct adl_serializer<ozo::benchmark::step> {
-    static void to_json(json& j, const ozo::benchmark::step& value) {
+struct adl_serializer<bozo::benchmark::step> {
+    static void to_json(json& j, const bozo::benchmark::step& value) {
         j["duration"] = value.duration;
         j["rows_count"] = value.rows_count;
         j["requests_count"] = value.requests_count;
     }
 
-    static void from_json(const json&, ozo::benchmark::step&) {
-        throw std::logic_error("ozo::benchmark::step serialization is not implemented");
+    static void from_json(const json&, bozo::benchmark::step&) {
+        throw std::logic_error("bozo::benchmark::step serialization is not implemented");
     }
 };
 
 template <>
-struct adl_serializer<ozo::benchmark::output> {
-    static void to_json(json& j, const ozo::benchmark::output& value) {
+struct adl_serializer<bozo::benchmark::output> {
+    static void to_json(json& j, const bozo::benchmark::output& value) {
         j["steps"] = value.steps;
         j["requests"] = value.requests;
     }
 
-    static void from_json(const json&, ozo::benchmark::output&) {
-        throw std::logic_error("ozo::benchmark::output serialization is not implemented");
+    static void from_json(const json&, bozo::benchmark::output&) {
+        throw std::logic_error("bozo::benchmark::output serialization is not implemented");
     }
 };
 
@@ -565,15 +565,15 @@ struct adl_serializer<benchmark_report> {
 
 namespace {
 
-ozo::time_traits::duration to_duration(const boost::program_options::variable_value& value) {
+bozo::time_traits::duration to_duration(const boost::program_options::variable_value& value) {
     using double_seconds = std::chrono::duration<double>;
-    return std::chrono::duration_cast<ozo::time_traits::duration>(double_seconds(value.as<double>()));
+    return std::chrono::duration_cast<bozo::time_traits::duration>(double_seconds(value.as<double>()));
 }
 
 }
 
 int main(int argc, char **argv) {
-    using namespace ozo::benchmark;
+    using namespace bozo::benchmark;
 
     namespace po = boost::program_options;
 

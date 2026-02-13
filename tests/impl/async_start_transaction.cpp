@@ -1,7 +1,7 @@
 #include "connection_mock.h"
 
-#include <ozo/core/options.h>
-#include <ozo/transaction.h>
+#include <bozo/core/options.h>
+#include <bozo/transaction.h>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -9,16 +9,16 @@
 namespace {
 
 using namespace testing;
-using namespace ozo::tests;
+using namespace bozo::tests;
 
-using ozo::error_code;
-using ozo::time_traits;
+using bozo::error_code;
+using bozo::time_traits;
 
 struct async_start_transaction : Test {
-    decltype(ozo::make_options()) options = ozo::make_options();
+    decltype(bozo::make_options()) options = bozo::make_options();
     StrictMock<connection_gmock> connection {};
     StrictMock<executor_mock> callback_executor{};
-    StrictMock<callback_gmock<ozo::transaction<connection_ptr<>, decltype(options)>>> callback {};
+    StrictMock<callback_gmock<bozo::transaction<connection_ptr<>, decltype(options)>>> callback {};
     StrictMock<executor_mock> strand {};
     io_context io;
     StrictMock<PGconn_mock> handle;
@@ -31,7 +31,7 @@ TEST_F(async_start_transaction, should_call_async_execute) {
 
     EXPECT_CALL(connection, async_execute()).WillOnce(Return());
 
-    ozo::detail::async_start_transaction(conn, options, empty_query {}, timeout, wrap(callback));
+    bozo::detail::async_start_transaction(conn, options, empty_query {}, timeout, wrap(callback));
 }
 
 } // namespace

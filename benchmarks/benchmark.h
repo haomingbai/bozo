@@ -1,8 +1,8 @@
 #pragma once
 
-#include <ozo/optional.h>
-#include <ozo/type_traits.h>
-#include <ozo/pg/types.h>
+#include <bozo/optional.h>
+#include <bozo/type_traits.h>
+#include <bozo/pg/types.h>
 
 #include <boost/range/algorithm/sort.hpp>
 #include <boost/range/algorithm/transform.hpp>
@@ -20,7 +20,7 @@
 #include <vector>
 #include <atomic>
 
-namespace ozo::benchmark {
+namespace bozo::benchmark {
 
 namespace hana = boost::hana;
 
@@ -78,7 +78,7 @@ std::ostream& operator <<(std::ostream& stream, std::chrono::steady_clock::durat
 }
 
 template <typename T>
-std::ostream& operator <<(std::ostream& stream, const OZO_STD_OPTIONAL<T>& value) {
+std::ostream& operator <<(std::ostream& stream, const BOZO_STD_OPTIONAL<T>& value) {
     if (value) {
         return stream << *value;
     } else {
@@ -122,8 +122,8 @@ public:
 
 private:
     std::size_t max_rows_count;
-    OZO_STD_OPTIONAL<std::chrono::steady_clock::time_point> start_time;
-    OZO_STD_OPTIONAL<std::chrono::steady_clock::time_point> finish;
+    BOZO_STD_OPTIONAL<std::chrono::steady_clock::time_point> start_time;
+    BOZO_STD_OPTIONAL<std::chrono::steady_clock::time_point> finish;
     std::size_t total_rows_count;
 };
 
@@ -139,19 +139,19 @@ struct output {
 };
 
 struct stats {
-    OZO_STD_OPTIONAL<std::chrono::steady_clock::duration> mean_request_time;
-    OZO_STD_OPTIONAL<std::chrono::steady_clock::duration> median_request_time;
-    OZO_STD_OPTIONAL<std::chrono::steady_clock::duration> q90_request_time;
-    OZO_STD_OPTIONAL<std::chrono::steady_clock::duration> min_request_time;
-    OZO_STD_OPTIONAL<std::chrono::steady_clock::duration> max_request_time;
+    BOZO_STD_OPTIONAL<std::chrono::steady_clock::duration> mean_request_time;
+    BOZO_STD_OPTIONAL<std::chrono::steady_clock::duration> median_request_time;
+    BOZO_STD_OPTIONAL<std::chrono::steady_clock::duration> q90_request_time;
+    BOZO_STD_OPTIONAL<std::chrono::steady_clock::duration> min_request_time;
+    BOZO_STD_OPTIONAL<std::chrono::steady_clock::duration> max_request_time;
     double mean_request_speed;
-    OZO_STD_OPTIONAL<double> median_request_speed;
-    OZO_STD_OPTIONAL<double> min_request_speed;
-    OZO_STD_OPTIONAL<double> max_request_speed;
+    BOZO_STD_OPTIONAL<double> median_request_speed;
+    BOZO_STD_OPTIONAL<double> min_request_speed;
+    BOZO_STD_OPTIONAL<double> max_request_speed;
     double mean_read_rows_speed;
-    OZO_STD_OPTIONAL<double> median_read_rows_speed;
-    OZO_STD_OPTIONAL<double> min_read_rows_speed;
-    OZO_STD_OPTIONAL<double> max_read_rows_speed;
+    BOZO_STD_OPTIONAL<double> median_read_rows_speed;
+    BOZO_STD_OPTIONAL<double> min_read_rows_speed;
+    BOZO_STD_OPTIONAL<double> max_read_rows_speed;
 };
 
 std::ostream& operator <<(std::ostream& stream, const stats& value) {
@@ -315,7 +315,7 @@ private:
 };
 
 struct pg_type {
-    ozo::pg::name typname;
+    bozo::pg::name typname;
     oid_t typnamespace;
     oid_t typowner;
     std::int16_t typlen;
@@ -329,8 +329,8 @@ struct pg_type {
     oid_t typarray;
 };
 
-} // namespace ozo::benchmark
+} // namespace bozo::benchmark
 
-BOOST_HANA_ADAPT_STRUCT(ozo::benchmark::pg_type,
+BOOST_HANA_ADAPT_STRUCT(bozo::benchmark::pg_type,
     typname, typnamespace, typowner, typlen, typbyval, typcategory,
     typispreferred, typisdefined, typdelim, typrelid, typelem, typarray);

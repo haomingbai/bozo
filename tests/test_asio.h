@@ -2,8 +2,8 @@
 
 #include "test_error.h"
 
-#include <ozo/detail/bind.h>
-#include <ozo/asio.h>
+#include <bozo/detail/bind.h>
+#include <bozo/asio.h>
 
 #include <boost/asio/post.hpp>
 #include <boost/asio/executor.hpp>
@@ -11,7 +11,7 @@
 
 #include <gmock/gmock.h>
 
-namespace ozo {
+namespace bozo {
 namespace tests {
 
 struct executor_mock {
@@ -82,7 +82,7 @@ struct steady_timer {
     template <typename Handler>
     void async_wait(Handler&& handler) {
         return impl->async_wait([h = std::forward<Handler>(handler)] (auto e) {
-            asio::post(ozo::detail::bind(std::move(h), std::move(e)));
+            asio::post(bozo::detail::bind(std::move(h), std::move(e)));
         });
     }
 
@@ -139,7 +139,7 @@ struct execution_context : asio::execution_context {
 
         void assert_has_impl() const {
             if (!impl_) {
-                throw std::logic_error("ozo::testing::execution_context::executor_type::assert_impl() no executor mock");
+                throw std::logic_error("bozo::testing::execution_context::executor_type::assert_impl() no executor mock");
             }
         }
 
@@ -182,14 +182,14 @@ struct stream_descriptor {
     template <typename ConstBufferSequence, typename WriteHandler>
     void async_write_some(ConstBufferSequence const &, WriteHandler&& h) {
         mock_->async_write_some([h = std::forward<WriteHandler>(h)] (auto e) {
-            asio::post(ozo::detail::bind(std::move(h), std::move(e)));
+            asio::post(bozo::detail::bind(std::move(h), std::move(e)));
         });
     }
 
     template <typename BufferSequence, typename ReadHandler>
     void async_read_some(BufferSequence&&, ReadHandler&& h) {
         mock_->async_read_some([h = std::forward<ReadHandler>(h)] (auto e) {
-            asio::post(ozo::detail::bind(std::move(h), std::move(e)));
+            asio::post(bozo::detail::bind(std::move(h), std::move(e)));
         });
     }
 
@@ -213,8 +213,8 @@ struct stream_descriptor {
 namespace detail {
 
 template <>
-struct strand_executor<ozo::tests::executor> {
-    using type = ozo::tests::executor;
+struct strand_executor<bozo::tests::executor> {
+    using type = bozo::tests::executor;
 
     static auto get(const tests::executor& ex) {
         return type{ex.context().strand_service_.get_executor(), ex.context()};
@@ -222,16 +222,16 @@ struct strand_executor<ozo::tests::executor> {
 };
 
 template <>
-struct operation_timer<ozo::tests::executor> {
-    using type = ozo::tests::steady_timer<ozo::tests::executor>;
+struct operation_timer<bozo::tests::executor> {
+    using type = bozo::tests::steady_timer<bozo::tests::executor>;
 
     template <typename TimeConstraint>
-    static type get(const ozo::tests::executor& ex, TimeConstraint t) {
+    static type get(const bozo::tests::executor& ex, TimeConstraint t) {
         return type{std::addressof(ex.context_->timer_service_.timer(t)), ex};
     }
 
     template <typename TimeConstraint>
-    static type get(const ozo::tests::executor& ex) {
+    static type get(const bozo::tests::executor& ex) {
         return type{std::addressof(ex.context_->timer_service_.timer()), ex};
     }
 };
@@ -242,7 +242,7 @@ namespace tests {
 
 template <typename ... Args>
 struct callback_mock {
-    virtual void call(ozo::error_code, Args...) const = 0;
+    virtual void call(bozo::error_code, Args...) const = 0;
     virtual ~callback_mock() = default;
 };
 
@@ -253,7 +253,7 @@ template <typename Arg1, typename Arg2>
 struct callback_gmock<Arg1, Arg2> {
     using executor_type = boost::asio::executor;
 
-    MOCK_CONST_METHOD3_T(call, void(ozo::error_code, Arg1, Arg2));
+    MOCK_CONST_METHOD3_T(call, void(bozo::error_code, Arg1, Arg2));
     MOCK_CONST_METHOD0_T(get_executor, executor_type ());
 };
 
@@ -261,7 +261,7 @@ template <typename Arg>
 struct callback_gmock<Arg> {
     using executor_type = boost::asio::executor;
 
-    MOCK_CONST_METHOD2_T(call, void(ozo::error_code, Arg));
+    MOCK_CONST_METHOD2_T(call, void(bozo::error_code, Arg));
     MOCK_CONST_METHOD0_T(get_executor, executor_type ());
 };
 
@@ -269,7 +269,7 @@ template <>
 struct callback_gmock<> {
     using executor_type = boost::asio::executor;
 
-    MOCK_CONST_METHOD1_T(call, void(ozo::error_code));
+    MOCK_CONST_METHOD1_T(call, void(bozo::error_code));
     MOCK_CONST_METHOD0_T(get_executor, executor_type ());
 };
 
@@ -282,7 +282,7 @@ struct callback_handler {
     callback_handler(M& mock) : mock_(std::addressof(mock)) {}
 
     template <typename ...Args>
-    void operator ()(ozo::error_code ec, Args&&... args) const {
+    void operator ()(bozo::error_code ec, Args&&... args) const {
         mock_->call(ec, std::forward<Args>(args)...);
     }
 
@@ -322,4 +322,4 @@ inline auto wrap(testing::StrictMock<callback_gmock<Ts...>>& mock, const Executo
 }
 
 } // namespace tests
-} // namespace ozo
+} // namespace bozo

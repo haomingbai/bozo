@@ -25,11 +25,11 @@ inline auto data(const MyString& s) { return s.Buffer(); }
 } // namespace NSdemo
 
 // We want to use it for the 'text' type
-OZO_PG_DEFINE_TYPE_AND_ARRAY(demo::my_string, "text", TEXTOID, TEXTARRAYOID, dynamic_size)
+BOZO_PG_DEFINE_TYPE_AND_ARRAY(demo::my_string, "text", TEXTOID, TEXTARRAYOID, dynamic_size)
 
-namespace ozo {
+namespace bozo {
 // Since we do not have resize() method and can not implement it
-// we need to specialize ozo::recv_impl template to allocate place
+// we need to specialize bozo::recv_impl template to allocate place
 // for the data.
 template <>
 struct recv_impl<NSdemo::MyString> {
@@ -41,5 +41,5 @@ struct recv_impl<NSdemo::MyString> {
         return read(in, out);
     }
 };
-} // namespace ozo
+} // namespace bozo
 @endcode

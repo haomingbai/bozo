@@ -57,9 +57,9 @@ jobs:
           test -d "${PG_TYPE_INCLUDE_DIR}"
           cmake -S . -B build/ci-${{ matrix.ts_executor }} -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DOZO_BUILD_TESTS=${{ matrix.build_tests }} \
-            -DOZO_BUILD_EXAMPLES=ON \
-            -DOZO_USE_TS_EXECUTOR=${{ matrix.ts_executor }} \
+            -DBOZO_BUILD_TESTS=${{ matrix.build_tests }} \
+            -DBOZO_BUILD_EXAMPLES=ON \
+            -DBOZO_USE_TS_EXECUTOR=${{ matrix.ts_executor }} \
             -DPostgreSQL_TYPE_INCLUDE_DIR="${PG_TYPE_INCLUDE_DIR}" \
             ${GTEST_DIR_ARG}
 
@@ -77,13 +77,13 @@ jobs:
       postgres:
         image: postgres:alpine
         env:
-          POSTGRES_DB: ozo_test_db
-          POSTGRES_USER: ozo_test_user
-          POSTGRES_PASSWORD: ozo_test_password
+          POSTGRES_DB: bozo_test_db
+          POSTGRES_USER: bozo_test_user
+          POSTGRES_PASSWORD: bozo_test_password
         ports:
           - 5432/tcp
         options: >-
-          --health-cmd "pg_isready -U ozo_test_user -d ozo_test_db"
+          --health-cmd "pg_isready -U bozo_test_user -d bozo_test_db"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 20
@@ -119,14 +119,14 @@ jobs:
           if [ -n "${GTEST_CONFIG}" ]; then
             GTEST_DIR_ARG="-DGTest_DIR=$(dirname "${GTEST_CONFIG}")"
           fi
-          OZO_CONNINFO="host=127.0.0.1 port=${PGPORT} dbname=ozo_test_db user=ozo_test_user password=ozo_test_password"
+          BOZO_CONNINFO="host=127.0.0.1 port=${PGPORT} dbname=bozo_test_db user=bozo_test_user password=bozo_test_password"
           cmake -S . -B build/ci-pg -G Ninja \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DOZO_BUILD_TESTS=ON \
-            -DOZO_BUILD_PG_TESTS=ON \
-            -DOZO_PG_TEST_CONNINFO="${OZO_CONNINFO}" \
-            -DOZO_BUILD_EXAMPLES=ON \
-            -DOZO_USE_TS_EXECUTOR=OFF \
+            -DBOZO_BUILD_TESTS=ON \
+            -DBOZO_BUILD_PG_TESTS=ON \
+            -DBOZO_PG_TEST_CONNINFO="${BOZO_CONNINFO}" \
+            -DBOZO_BUILD_EXAMPLES=ON \
+            -DBOZO_USE_TS_EXECUTOR=OFF \
             -DPostgreSQL_TYPE_INCLUDE_DIR="${PG_TYPE_INCLUDE_DIR}" \
             ${GTEST_DIR_ARG}
 

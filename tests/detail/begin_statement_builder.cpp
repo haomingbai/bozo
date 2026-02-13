@@ -1,5 +1,5 @@
-#include <ozo/detail/begin_statement_builder.h>
-#include <ozo/query_builder.h>
+#include <bozo/detail/begin_statement_builder.h>
+#include <bozo/query_builder.h>
 
 #include <gtest/gtest.h>
 
@@ -8,8 +8,8 @@ namespace {
 namespace hana = boost::hana;
 
 TEST(begin_statement_builder, should_build_query_according_to_options) {
-    using namespace ozo;
-    using namespace ozo::detail;
+    using namespace bozo;
+    using namespace bozo::detail;
     using namespace hana::literals;
 
     EXPECT_EQ(get_text(begin_statement_builder::build(make_options(transaction_options::isolation_level = isolation_level::serializable,
@@ -175,20 +175,20 @@ TEST(begin_statement_builder, should_build_query_according_to_options) {
 }
 
 TEST(begin_statement_builder, should_treat_none_like_non_existent_parameters) {
-    using namespace ozo;
-    using namespace ozo::detail;
+    using namespace bozo;
+    using namespace bozo::detail;
 
-    EXPECT_EQ(get_text(begin_statement_builder::build(make_options(transaction_options::isolation_level = ozo::none))),
+    EXPECT_EQ(get_text(begin_statement_builder::build(make_options(transaction_options::isolation_level = bozo::none))),
               get_text(begin_statement_builder::build(make_options())));
 
-    EXPECT_EQ(get_text(begin_statement_builder::build(make_options(transaction_options::deferrability = ozo::none,
+    EXPECT_EQ(get_text(begin_statement_builder::build(make_options(transaction_options::deferrability = bozo::none,
                                                                    transaction_options::mode = transaction_mode::read_only))),
               get_text(begin_statement_builder::build(make_options(transaction_options::mode = transaction_mode::read_only))));
 }
 
 TEST(begin_statement_builder, should_allow_integral_constants_for_deferrability) {
-    using namespace ozo;
-    using namespace ozo::detail;
+    using namespace bozo;
+    using namespace bozo::detail;
 
     EXPECT_EQ(get_text(begin_statement_builder::build(make_options(transaction_options::deferrability = deferrable))),
               get_text(begin_statement_builder::build(make_options(transaction_options::deferrability = std::true_type{}))));

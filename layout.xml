@@ -4,7 +4,7 @@
   <navindex>
     <tab type="mainpage" visible="yes" title=""/>
     <tab type="pages" visible="yes" title="" intro=""/>
-    <tab type="modules" visible="yes" title="API Reference" intro="User API reference of OZO"/>
+    <tab type="modules" visible="yes" title="API Reference" intro="User API reference of BOZO"/>
     <tab type="namespaces" visible="no" title="">
       <tab type="namespacelist" visible="no" title="" intro=""/>
       <tab type="namespacemembers" visible="no" title="" intro=""/>
@@ -20,7 +20,7 @@
       <tab type="globals" visible="yes" title="" intro=""/>
     </tab>
     <tab type="examples" visible="yes" title="" intro=""/>
-    <tab type="user" url="https://github.com/yandex/ozo" title="GitHub"/>
+    <tab type="user" url="https://github.com/yandex/bozo" title="GitHub"/>
   </navindex>
 
   <!-- Layout definition for a class page -->

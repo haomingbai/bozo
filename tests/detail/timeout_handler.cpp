@@ -1,4 +1,4 @@
-#include <ozo/detail/timeout_handler.h>
+#include <bozo/detail/timeout_handler.h>
 #include "../test_asio.h"
 
 #include <gtest/gtest.h>
@@ -14,9 +14,9 @@ struct connection_mock {
 
 TEST(cancel_io, should_cancel_socket_io) {
     connection_mock conn;
-    ozo::detail::cancel_io cancel_io_handler{conn, std::allocator<char>{}};
+    bozo::detail::cancel_io cancel_io_handler{conn, std::allocator<char>{}};
     EXPECT_CALL(conn, cancel()).WillOnce(Return());
-    cancel_io_handler(ozo::error_code{});
+    cancel_io_handler(bozo::error_code{});
 }
 
 } // namespace

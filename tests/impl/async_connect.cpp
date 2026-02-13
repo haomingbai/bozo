@@ -1,27 +1,27 @@
 #include <connection_mock.h>
 #include <test_error.h>
 
-#include <ozo/impl/async_connect.h>
+#include <bozo/impl/async_connect.h>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-namespace ozo::tests {
+namespace bozo::tests {
 
 struct custom_type {};
 
-} // namespace ozo::tests
+} // namespace bozo::tests
 
-OZO_PG_DEFINE_CUSTOM_TYPE(ozo::tests::custom_type, "custom_type")
+BOZO_PG_DEFINE_CUSTOM_TYPE(bozo::tests::custom_type, "custom_type")
 
 namespace {
 
 namespace asio = boost::asio;
 
 using namespace testing;
-using namespace ozo::tests;
+using namespace bozo::tests;
 
-using ozo::empty_oid_map;
+using bozo::empty_oid_map;
 
 struct fixture {
     StrictMock<connection_gmock> connection{};
@@ -35,18 +35,18 @@ struct fixture {
     StrictMock<PGconn_mock> handle;
 
     auto async_connect_op() {
-        return ozo::impl::async_connect_op(conn, wrap(callback));
+        return bozo::impl::async_connect_op(conn, wrap(callback));
     }
 
     fixture() {
         EXPECT_CALL(io.strand_service_, get_executor()).WillOnce(ReturnRef(strand));
-        auto ex = boost::asio::executor(ozo::detail::make_strand_executor(io.get_executor()));
+        auto ex = boost::asio::executor(bozo::detail::make_strand_executor(io.get_executor()));
         EXPECT_CALL(callback, get_executor()).WillRepeatedly(Return(ex));
     }
 };
 
-using ozo::error_code;
-using ozo::time_traits;
+using bozo::error_code;
+using bozo::time_traits;
 
 struct async_connect_op : Test {
     fixture f;
@@ -69,7 +69,7 @@ TEST_F(async_connect_op, should_call_handler_with_pq_connection_start_failed_on_
     EXPECT_CALL(f.connection, start_connection("conninfo"))
         .WillOnce(Return(native_conn_handle{}));
 
-    EXPECT_CALL(f.callback, call(error_code{ozo::error::pq_connection_start_failed}, f.conn))
+    EXPECT_CALL(f.callback, call(error_code{bozo::error::pq_connection_start_failed}, f.conn))
         .WillOnce(Return());
 
     f.async_connect_op().perform("conninfo");
@@ -81,7 +81,7 @@ TEST_F(async_connect_op, should_call_handler_with_pq_connection_status_bad_if_co
     EXPECT_CALL(f.connection, start_connection("conninfo")).WillOnce(Return(std::addressof(f.handle)));
     EXPECT_CALL(f.handle, PQstatus()).WillRepeatedly(Return(CONNECTION_BAD));
 
-    EXPECT_CALL(f.callback, call(error_code{ozo::error::pq_connection_status_bad}, f.conn))
+    EXPECT_CALL(f.callback, call(error_code{bozo::error::pq_connection_status_bad}, f.conn))
         .WillOnce(Return());
 
     f.async_connect_op().perform("conninfo");
@@ -164,7 +164,7 @@ TEST_F(async_connect_op, should_call_handler_with_pq_connect_poll_failed_if_conn
     EXPECT_CALL(f.strand, post(_)).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(f.handle, PQconnectPoll()).WillOnce(Return(PGRES_POLLING_FAILED));
 
-    EXPECT_CALL(f.callback, call(error_code{ozo::error::pq_connect_poll_failed}, f.conn))
+    EXPECT_CALL(f.callback, call(error_code{bozo::error::pq_connect_poll_failed}, f.conn))
         .WillOnce(Return());
 
     f.async_connect_op().perform("conninfo");
@@ -183,7 +183,7 @@ TEST_F(async_connect_op, should_call_handler_with_pq_connect_poll_failed_if_conn
 
     EXPECT_CALL(f.handle, PQconnectPoll()).WillOnce(Return(PGRES_POLLING_ACTIVE));
 
-    EXPECT_CALL(f.callback, call(error_code{ozo::error::pq_connect_poll_failed}, f.conn))
+    EXPECT_CALL(f.callback, call(error_code{bozo::error::pq_connect_poll_failed}, f.conn))
         .WillOnce(Return());
 
     f.async_connect_op().perform("conninfo");
@@ -241,8 +241,8 @@ TEST_F(async_connect, should_cancel_timer_when_operation_is_done_before_timeout)
     EXPECT_CALL(f.io.strand_service_, get_executor()).WillRepeatedly(ReturnRef(f.strand));
     EXPECT_CALL(f.io.timer_service_, timer(time_traits::duration(42))).WillRepeatedly(ReturnRef(f.timer));
 
-    std::function<void (ozo::error_code)> on_timer_expired;
-    std::function<void (ozo::error_code)> on_async_write_some;
+    std::function<void (bozo::error_code)> on_timer_expired;
+    std::function<void (bozo::error_code)> on_async_write_some;
 
     EXPECT_CALL(f.timer, async_wait(_)).WillOnce(SaveArg<0>(&on_timer_expired));
 
@@ -265,9 +265,9 @@ TEST_F(async_connect, should_cancel_timer_when_operation_is_done_before_timeout)
     EXPECT_CALL(cb_io.executor_, dispatch(_)).InSequence(s).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(callback, call(error_code{}, f.conn)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_connect("conninfo", time_traits::duration(42), f.conn, wrap(callback));
+    bozo::impl::async_connect("conninfo", time_traits::duration(42), f.conn, wrap(callback));
 
-    on_async_write_some(ozo::error_code{});
+    on_async_write_some(bozo::error_code{});
     on_timer_expired(boost::asio::error::operation_aborted);
 }
 
@@ -295,14 +295,14 @@ TEST_F(async_connect, should_cancel_connection_operations_on_timeout) {
     EXPECT_CALL(cb_io.executor_, dispatch(_)).InSequence(s).WillOnce(InvokeArgument<0>());
     EXPECT_CALL(callback, call(Eq(boost::asio::error::timed_out), f.conn)).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_connect("conninfo", time_traits::duration(42), f.conn, wrap(callback));
+    bozo::impl::async_connect("conninfo", time_traits::duration(42), f.conn, wrap(callback));
 
     on_timer_expired(error_code {});
     on_async_write_some(boost::asio::error::operation_aborted);
 }
 
 TEST_F(async_connect, should_request_oid_map_when_oid_map_is_not_empty) {
-    auto conn = make_connection(f.connection, f.io, f.native_handle, ozo::register_types<custom_type>());
+    auto conn = make_connection(f.connection, f.io, f.native_handle, bozo::register_types<custom_type>());
     StrictMock<callback_gmock<decltype(conn)>> callback {};
 
     execution_context cb_io;
@@ -325,7 +325,7 @@ TEST_F(async_connect, should_request_oid_map_when_oid_map_is_not_empty) {
 
     EXPECT_CALL(f.connection, request_oid_map()).InSequence(s).WillOnce(Return());
 
-    ozo::impl::async_connect("conninfo", time_traits::duration(42), conn, wrap(callback));
+    bozo::impl::async_connect("conninfo", time_traits::duration(42), conn, wrap(callback));
 }
 
 } // namespace

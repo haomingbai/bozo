@@ -1,25 +1,25 @@
-# ozo
+# bozo
 
-[![Build Status](https://travis-ci.org/yandex/ozo.svg?branch=master)](https://travis-ci.org/yandex/ozo)
-[![codecov](https://codecov.io/gh/yandex/ozo/branch/master/graph/badge.svg)](https://codecov.io/gh/yandex/ozo)
+[![Build Status](https://travis-ci.org/yandex/bozo.svg?branch=master)](https://travis-ci.org/yandex/bozo)
+[![codecov](https://codecov.io/gh/yandex/bozo/branch/master/graph/badge.svg)](https://codecov.io/gh/yandex/bozo)
 
 ## What's this
 
-OZO is a C++17 library for asyncronous communication with PostgreSQL DBMS.
-The library leverages the power of template metaprogramming, providing convenient mapping from C++ types to SQL along with rich query building possibilities. OZO supports different concurrency paradigms (callbacks, futures, coroutines), using Boost.Asio under the hood. Low-level communication with PostgreSQL server is done via libpq. All concepts in the library are designed to be easily extendable (even replaceable) by the user to simplify adaptation to specific project requirements.
+BOZO is a C++17 library for asyncronous communication with PostgreSQL DBMS.
+The library leverages the power of template metaprogramming, providing convenient mapping from C++ types to SQL along with rich query building possibilities. BOZO supports different concurrency paradigms (callbacks, futures, coroutines), using Boost.Asio under the hood. Low-level communication with PostgreSQL server is done via libpq. All concepts in the library are designed to be easily extendable (even replaceable) by the user to simplify adaptation to specific project requirements.
 
 ### API
 
 Since the project is on early state of development it lacks of documentation. We understand the importance of good docs and are working hard on this problem. Complete documentation is on the way, but now:
 
 * look at our brand new [HOW TO](docs/howto.md),
-* try our [generated from sources documentation](https://yandex.github.io/ozo/) - it is under construction but readable,
+* try our [generated from sources documentation](https://yandex.github.io/bozo/) - it is under construction but readable,
 * learn more about main use-cases from [unit tests](tests/integration/request_integration.cpp),
-* See our [C++Now'18 talk about OZO](https://youtu.be/-1zbaxuUsMA) with [presentation](https://github.com/boostcon/cppnow_presentations_2018/blob/master/05-09-2018_wednesday/design_and_implementation_of_dbms_asynchronous_client_library__roman_siromakha__cppnow_05092018.pdf).
+* See our [C++Now'18 talk about BOZO](https://youtu.be/-1zbaxuUsMA) with [presentation](https://github.com/boostcon/cppnow_presentations_2018/blob/master/05-09-2018_wednesday/design_and_implementation_of_dbms_asynchronous_client_library__roman_siromakha__cppnow_05092018.pdf).
 
 ## Compatibilities
 
-For the time OZO is not compatible with new executors models that are used by default since Boost 1.74. The `BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT` macro needs to be defined. See Boost 1.74 [changelog](https://www.boost.org/doc/libs/1_74_0/doc/html/boost_asio/history.html#boost_asio.history.asio_1_18_0___boost_1_74) for the details.
+For the time BOZO is not compatible with new executors models that are used by default since Boost 1.74. The `BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT` macro needs to be defined. See Boost 1.74 [changelog](https://www.boost.org/doc/libs/1_74_0/doc/html/boost_asio/history.html#boost_asio.history.asio_1_18_0___boost_1_74) for the details.
 ## Dependencies
 
 These things are needed:
@@ -45,7 +45,7 @@ First of all you need to satsfy requirements listed above. You can run tests usi
 ```bash
 mkdir -p build
 cd build
-cmake .. -DOZO_BUILD_TESTS=ON
+cmake .. -DBOZO_BUILD_TESTS=ON
 make -j$(nproc)
 ctest -V
 ```
@@ -131,11 +131,11 @@ scripts/build.sh pg docker <compiler> <target>
 ```
 
 This will attempt to launch postgres:alpine from your Docker registry.
-Or you can point ozo tests to a postgres of your choosing by setting these environment variables prior to building:
+Or you can point bozo tests to a postgres of your choosing by setting these environment variables prior to building:
 
 ```bash
-export OZO_BUILD_PG_TESTS=ON
-export OZO_PG_TEST_CONNINFO='your conninfo (connection string)'
+export BOZO_BUILD_PG_TESTS=ON
+export BOZO_PG_TEST_CONNINFO='your conninfo (connection string)'
 
 scripts/build.sh gcc debug
 ```
