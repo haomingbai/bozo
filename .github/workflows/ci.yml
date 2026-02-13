@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: modern-asio
+            ts_executor: "OFF"
+            build_tests: "ON"
+          - name: legacy-ts-executor
+            ts_executor: "ON"
+            build_tests: "OFF"
+
+    name: ${{ matrix.name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            ninja-build \
+            g++ \
+            libboost-all-dev \
+            libpq-dev \
+            libgtest-dev
+
+      - name: Configure
+        run: >
+          cmake -S . -B build/ci-${{ matrix.ts_executor }} -G Ninja
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          -DOZO_BUILD_TESTS=${{ matrix.build_tests }}
+          -DOZO_BUILD_EXAMPLES=ON
+          -DOZO_USE_TS_EXECUTOR=${{ matrix.ts_executor }}
+
+      - name: Build
+        run: cmake --build build/ci-${{ matrix.ts_executor }} --parallel
+
+      - name: Test
+        if: matrix.build_tests == 'ON'
+        run: ctest --test-dir build/ci-${{ matrix.ts_executor }} --output-on-failure
