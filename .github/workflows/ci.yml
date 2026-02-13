@@ -69,3 +69,69 @@ jobs:
       - name: Test
         if: matrix.build_tests == 'ON'
         run: ctest --test-dir build/ci-${{ matrix.ts_executor }} --output-on-failure
+
+  pg-integration:
+    runs-on: ubuntu-22.04
+    name: pg-integration
+    services:
+      postgres:
+        image: postgres:alpine
+        env:
+          POSTGRES_DB: ozo_test_db
+          POSTGRES_USER: ozo_test_user
+          POSTGRES_PASSWORD: ozo_test_password
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -U ozo_test_user -d ozo_test_db"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            ninja-build \
+            g++ \
+            libboost-all-dev \
+            libpq-dev \
+            libgtest-dev \
+            libgmock-dev
+
+      - name: Configure
+        env:
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+        run: |
+          PG_TYPE_INCLUDE_DIR="$(pg_config --includedir-server 2>/dev/null || true)"
+          if [ -z "${PG_TYPE_INCLUDE_DIR}" ] || [ ! -d "${PG_TYPE_INCLUDE_DIR}" ]; then
+            PG_TYPE_INCLUDE_DIR="$(pg_config --includedir)"
+          fi
+          GTEST_CONFIG="$(find /usr/lib /usr/lib64 -path '*/cmake/GTest/GTestConfig.cmake' 2>/dev/null | head -n1 || true)"
+          GTEST_DIR_ARG=""
+          if [ -n "${GTEST_CONFIG}" ]; then
+            GTEST_DIR_ARG="-DGTest_DIR=$(dirname "${GTEST_CONFIG}")"
+          fi
+          OZO_CONNINFO="host=127.0.0.1 port=${PGPORT} dbname=ozo_test_db user=ozo_test_user password=ozo_test_password"
+          cmake -S . -B build/ci-pg -G Ninja \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DOZO_BUILD_TESTS=ON \
+            -DOZO_BUILD_PG_TESTS=ON \
+            -DOZO_PG_TEST_CONNINFO="${OZO_CONNINFO}" \
+            -DOZO_BUILD_EXAMPLES=ON \
+            -DOZO_USE_TS_EXECUTOR=OFF \
+            -DPostgreSQL_TYPE_INCLUDE_DIR="${PG_TYPE_INCLUDE_DIR}" \
+            ${GTEST_DIR_ARG}
+
+      - name: Build
+        run: cmake --build build/ci-pg --parallel
+
+      - name: Test
+        run: ctest --test-dir build/ci-pg --output-on-failure -V
