@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(bsrvcore CONFIG)
+find_dependency(ozo CONFIG)
+
+include("${CMAKE_CURRENT_LIST_DIR}/bozoTargets.cmake")

@@ -1,0 +1,35 @@
+# Ignore project build directories.
+*build*/
+
+# Ignore in-source CMake and test artifacts.
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+Testing/
+Makefile
+cmake_install.cmake
+compile_commands.json
+
+# Ignore editor and IDE files.
+.cache/
+.vscode/
+.idea/
+.vs/
+*.code-workspace
+
+# Ignore local Python environments and generated artifacts.
+.venv*/
+.artifacts/
+
+# Ignore temporary editor files.
+*.swp
+*.swo
+*~
+
+# Ignore AI and local tool files.
+.codex
+
+# Ignore local reference repositories kept under the project root.
+boai/
+bsrvcore/
+ozo/

@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bozo-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit And Coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Build Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build python3-pip
+          python3 -m pip install --user gcovr
+
+      - name: Configure Unit Build
+        env:
+          CFLAGS: --coverage
+          CXXFLAGS: --coverage
+          LDFLAGS: --coverage
+        run: |
+          cmake -S . -B build-unit -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBOZO_BUILD_TESTS=ON \
+            -DBOZO_BUILD_INTEGRATION_TESTS=OFF \
+            -DBOZO_BUILD_EXAMPLES=OFF
+
+      - name: Build Unit Tests
+        run: cmake --build build-unit --parallel --target unit_postgresql_task_test
+
+      - name: Run Unit Tests
+        run: ctest --test-dir build-unit --output-on-failure -L unit
+
+      - name: Generate Unit Coverage
+        run: |
+          python3 -m gcovr \
+            --root "${GITHUB_WORKSPACE}" \
+            --filter "${GITHUB_WORKSPACE}/src" \
+            --filter "${GITHUB_WORKSPACE}/include" \
+            --exclude "${GITHUB_WORKSPACE}/build-unit/_deps" \
+            --exclude "${GITHUB_WORKSPACE}/tests" \
+            --print-summary \
+            --xml-pretty \
+            --output build-unit/unit-coverage.xml
+          python3 -m gcovr \
+            --root "${GITHUB_WORKSPACE}" \
+            --filter "${GITHUB_WORKSPACE}/src" \
+            --filter "${GITHUB_WORKSPACE}/include" \
+            --exclude "${GITHUB_WORKSPACE}/build-unit/_deps" \
+            --exclude "${GITHUB_WORKSPACE}/tests" \
+            --html-details \
+            --output build-unit/unit-coverage.html
+
+      - name: Upload Unit Coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage
+          path: build-unit/unit-coverage*
+          if-no-files-found: error
+
+  integration:
+    name: Integration And Examples
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      BOZO_PG_TEST_CONNINFO: host=127.0.0.1 port=55432 dbname=bozo_test user=bozo password=bozo
+      BOZO_CONTAINER_RUNTIME: docker
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Build Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+
+      - name: Start PostgreSQL
+        run: sh tests/support/postgres_container.sh start
+
+      - name: Configure Integration Build
+        run: |
+          cmake -S . -B build-integration -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBOZO_BUILD_TESTS=ON \
+            -DBOZO_BUILD_INTEGRATION_TESTS=ON \
+            -DBOZO_BUILD_EXAMPLES=ON \
+            -DBOZO_INTEGRATION_TEST_CONNINFO="${BOZO_PG_TEST_CONNINFO}" \
+            -DBOZO_INTEGRATION_TEST_CONTAINER_RUNTIME=docker
+
+      - name: Build Integration Targets
+        run: |
+          cmake --build build-integration --parallel \
+            --target integration_postgresql_task_test \
+                     bozo_basic_query \
+                     bozo_transaction_flow \
+                     bozo_pool_factory
+
+      - name: Run Integration Tests
+        run: ctest --test-dir build-integration --output-on-failure -L integration
+
+      - name: Smoke Test Examples
+        run: |
+          ./build-integration/bin/examples/basic-query "${BOZO_PG_TEST_CONNINFO}"
+          ./build-integration/bin/examples/transaction-flow "${BOZO_PG_TEST_CONNINFO}"
+          ./build-integration/bin/examples/pool-factory "${BOZO_PG_TEST_CONNINFO}"
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: sh tests/support/postgres_container.sh stop
