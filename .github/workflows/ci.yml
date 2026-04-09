@@ -25,7 +25,13 @@ jobs:
       - name: Install Build Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build python3-pip
+          sudo apt-get install -y \
+            ninja-build \
+            python3-pip \
+            libboost-all-dev \
+            libpq-dev \
+            libssl-dev \
+            pkg-config
           python3 -m pip install --user gcovr
 
       - name: Configure Unit Build
@@ -88,7 +94,12 @@ jobs:
       - name: Install Build Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build
+          sudo apt-get install -y \
+            ninja-build \
+            libboost-all-dev \
+            libpq-dev \
+            libssl-dev \
+            pkg-config
 
       - name: Start PostgreSQL
         run: sh tests/support/postgres_container.sh start
