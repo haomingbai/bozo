@@ -13,6 +13,12 @@ It ships as a normal CMake library package:
 `b44bdadb1c6bc705a326c26ac6009f1f864c9377`, which no longer requires TS
 executors.
 
+## Documentation
+
+- overview: [docs/README.md](docs/README.md)
+- user guide: [docs/guides/postgresql-task.md](docs/guides/postgresql-task.md)
+- design: [docs/design/postgresql-task.md](docs/design/postgresql-task.md)
+
 For query output you can choose either:
 
 - caller-owned output via `Request()` / `RequestRaw()`
@@ -112,4 +118,4 @@ Each example expects a PostgreSQL conninfo string:
   "host=127.0.0.1 port=5432 dbname=postgres user=postgres password=postgres"
 ```
 
-See [docs/manual/postgresql-task.md](docs/manual/postgresql-task.md).
+See [docs/guides/postgresql-task.md](docs/guides/postgresql-task.md).
