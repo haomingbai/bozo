@@ -25,11 +25,15 @@
 #include <mutex>
 #include <string>
 #include <system_error>
+#include <tuple>
+#include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
 #include "bsrvcore/core/trait.h"
 #include "bsrvcore/core/types.h"
+#include "bozo/postgresql/postgresql_query.h"
 #include "ozo/asio.h"
 #include "ozo/connection.h"
 #include "ozo/connection_info.h"
@@ -37,6 +41,7 @@
 #include "ozo/core/recursive.h"
 #include "ozo/error.h"
 #include "ozo/execute.h"
+#include "ozo/io/binary_query.h"
 #include "ozo/request.h"
 #include "ozo/result.h"
 #include "ozo/shortcuts.h"
@@ -155,6 +160,11 @@ struct PostgreSqlTaskPoolOptions
   ozo::connection_pool_config pool_config{};
 };
 
+template <typename T>
+inline constexpr bool IsBinaryQueryObject =
+    !std::is_base_of_v<ozo::detail::no_binary_query_conversion,
+                       ozo::to_binary_query_impl<std::decay_t<T>>>;
+
 /**
  * @brief Thread-safe serialized PostgreSQL task.
  */
@@ -172,7 +182,14 @@ public:
   [[nodiscard]] std::error_code Close(Callback cb = {});
 
   template <typename Query, typename CallbackLike>
+    requires IsBinaryQueryObject<Query>
   [[nodiscard]] std::error_code Execute(Query &&query, CallbackLike &&cb);
+
+  template <typename Text, typename... Args>
+    requires(ozo::QueryText<std::decay_t<Text>> &&
+             !IsBinaryQueryObject<Text> &&
+             sizeof...(Args) > 0)
+  [[nodiscard]] std::error_code Execute(Text &&text, Args &&...args);
 
   /**
    * @brief Executes a typed query and writes decoded rows into `out`.
@@ -182,8 +199,15 @@ public:
    * The callback only reports task status and connection/transaction state.
    */
   template <typename Query, typename Out, typename CallbackLike>
+    requires IsBinaryQueryObject<Query>
   [[nodiscard]] std::error_code Request(Query &&query, Out out,
                                         CallbackLike &&cb);
+
+  template <typename Text, typename Out, typename... Args>
+    requires(ozo::QueryText<std::decay_t<Text>> &&
+             !IsBinaryQueryObject<Text> &&
+             sizeof...(Args) > 0)
+  [[nodiscard]] std::error_code Request(Text &&text, Out out, Args &&...args);
 
   /**
    * @brief Executes a typed query and delivers the decoded output to the
@@ -195,7 +219,14 @@ public:
    * `Output` must be default-constructible.
    */
   template <typename Output, typename Query, typename CallbackLike>
+    requires IsBinaryQueryObject<Query>
   [[nodiscard]] std::error_code RequestValue(Query &&query, CallbackLike &&cb);
+
+  template <typename Output, typename Text, typename... Args>
+    requires(ozo::QueryText<std::decay_t<Text>> &&
+             !IsBinaryQueryObject<Text> &&
+             sizeof...(Args) > 0)
+  [[nodiscard]] std::error_code RequestValue(Text &&text, Args &&...args);
 
   /**
    * @brief Executes a query into raw `ozo::result`.
@@ -204,16 +235,31 @@ public:
    * and reports task status through the callback.
    */
   template <typename Query, typename CallbackLike>
+    requires IsBinaryQueryObject<Query>
   [[nodiscard]] std::error_code RequestRaw(Query &&query, ozo::result &out,
                                            CallbackLike &&cb);
+
+  template <typename Text, typename... Args>
+    requires(ozo::QueryText<std::decay_t<Text>> &&
+             !IsBinaryQueryObject<Text> &&
+             sizeof...(Args) > 0)
+  [[nodiscard]] std::error_code RequestRaw(Text &&text, ozo::result &out,
+                                           Args &&...args);
 
   /**
    * @brief Executes a query into an owned raw `ozo::result` and passes it to
    * the callback.
    */
   template <typename Query, typename CallbackLike>
+    requires IsBinaryQueryObject<Query>
   [[nodiscard]] std::error_code RequestRawValue(Query &&query,
                                                 CallbackLike &&cb);
+
+  template <typename Text, typename... Args>
+    requires(ozo::QueryText<std::decay_t<Text>> &&
+             !IsBinaryQueryObject<Text> &&
+             sizeof...(Args) > 0)
+  [[nodiscard]] std::error_code RequestRawValue(Text &&text, Args &&...args);
 
   /**
    * @brief Binds shared output storage to a status callback.
@@ -253,8 +299,44 @@ private:
     kClose,
   };
 
+  struct OperationStart {
+    struct Interface {
+      virtual ~Interface() = default;
+      virtual void Run() = 0;
+    };
+
+    template <typename Fn>
+    struct Model final : Interface {
+      explicit Model(Fn fn) : fn_(std::move(fn)) {}
+
+      void Run() override { fn_(); }
+
+      Fn fn_;
+    };
+
+    OperationStart() = default;
+    OperationStart(OperationStart &&) noexcept = default;
+    OperationStart &operator=(OperationStart &&) noexcept = default;
+    OperationStart(const OperationStart &) = delete;
+    OperationStart &operator=(const OperationStart &) = delete;
+
+    template <typename Fn>
+    explicit OperationStart(Fn &&fn)
+        : impl_(std::make_unique<Model<std::decay_t<Fn>>>(
+              std::forward<Fn>(fn))) {}
+
+    void operator()() {
+      if (impl_) {
+        impl_->Run();
+      }
+    }
+
+  private:
+    std::unique_ptr<Interface> impl_;
+  };
+
   struct QueuedOperation {
-    std::function<void()> start;
+    OperationStart start;
     Callback callback;
   };
 
@@ -288,6 +370,16 @@ private:
   void StartTransactionImpl(Callback cb);
   void CommitOrRollbackImpl(bool commit, Callback cb);
 
+  template <typename Query, typename CallbackLike>
+    requires IsBinaryQueryObject<Query>
+  [[nodiscard]] std::error_code EnqueueExecuteOperation(Query &&query,
+                                                        CallbackLike &&cb);
+
+  template <typename Query, typename Out, typename CallbackLike>
+    requires IsBinaryQueryObject<Query>
+  [[nodiscard]] std::error_code EnqueueRequestOperation(Query &&query, Out out,
+                                                        CallbackLike &&cb);
+
   template <typename Query> void StartExecuteImpl(Query query, Callback cb);
 
   template <typename Query, typename Out>
@@ -310,6 +402,15 @@ private:
 
   template <typename Handle>
   [[nodiscard]] static HandleVariant MakeHandleVariant(Handle handle);
+
+  template <typename Text, typename Tuple, std::size_t... Indexes>
+  [[nodiscard]] static auto MakeQueryFromStoredArgumentsImpl(
+      Text &&text, Tuple &stored_arguments,
+      std::index_sequence<Indexes...> indexes);
+
+  template <typename Text, typename Tuple>
+  [[nodiscard]] static auto MakeQueryFromStoredArguments(
+      Text &&text, Tuple &stored_arguments);
 
   [[nodiscard]] PostgreSqlTaskPhase GetActualPhase() const;
   [[nodiscard]] PostgreSqlTaskState MakeStateSnapshotLocked() const;

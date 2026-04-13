@@ -7,8 +7,10 @@
 #include <atomic>
 #include <chrono>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -213,21 +215,45 @@ TEST(PostgreSqlTaskTest, CloseImmediatelyRejectsAllNewPublicOperations) {
 
   EXPECT_EQ(task->Execute("SELECT 1"_SQL, PostgreSqlTask::Callback{}),
             make_error_code(PostgreSqlTaskErrc::kClosed));
+  EXPECT_EQ(task->Execute("SELECT $1::int", 1, PostgreSqlTask::Callback{}),
+            make_error_code(PostgreSqlTaskErrc::kClosed));
   EXPECT_EQ(
       task->Request("SELECT 1"_SQL, ozo::into(raw), PostgreSqlTask::Callback{}),
       make_error_code(PostgreSqlTaskErrc::kClosed));
+  EXPECT_EQ(task->Request("SELECT $1::int", ozo::into(raw), 1,
+                          PostgreSqlTask::Callback{}),
+            make_error_code(PostgreSqlTaskErrc::kClosed));
   EXPECT_EQ(
       task->RequestValue<ozo::rows_of<int>>(
           "SELECT 1"_SQL,
           [](const bozo::postgresql::PostgreSqlTaskResult &,
              const ozo::rows_of<int> &) {}),
       make_error_code(PostgreSqlTaskErrc::kClosed));
+  EXPECT_EQ(
+      task->RequestValue<ozo::rows_of<int>>(
+          "SELECT $1::int", 1,
+          [](const bozo::postgresql::PostgreSqlTaskResult &,
+             const ozo::rows_of<int> &) {}),
+      make_error_code(PostgreSqlTaskErrc::kClosed));
   EXPECT_EQ(task->RequestRaw("SELECT 1"_SQL, raw, PostgreSqlTask::Callback{}),
+            make_error_code(PostgreSqlTaskErrc::kClosed));
+  EXPECT_EQ(task->RequestRaw("SELECT $1::int", raw, 1,
+                             PostgreSqlTask::Callback{}),
             make_error_code(PostgreSqlTaskErrc::kClosed));
   EXPECT_EQ(
       task->RequestRawValue(
           "SELECT 1"_SQL,
           [](const bozo::postgresql::PostgreSqlTaskResult &, const ozo::result &) {}),
+      make_error_code(PostgreSqlTaskErrc::kClosed));
+  EXPECT_EQ(
+      task->RequestRawValue(
+          "SELECT current_database()",
+          [](const bozo::postgresql::PostgreSqlTaskResult &,
+             const ozo::result &) {}),
+      make_error_code(PostgreSqlTaskErrc::kClosed));
+  EXPECT_EQ(
+      task->Execute(bozo::postgresql::MakeQuery("SELECT $1::int", 1),
+                    PostgreSqlTask::Callback{}),
       make_error_code(PostgreSqlTaskErrc::kClosed));
   EXPECT_EQ(task->StartTransaction(PostgreSqlTask::Callback{}),
             make_error_code(PostgreSqlTaskErrc::kClosed));
@@ -274,6 +300,42 @@ TEST(PostgreSqlTaskTest, QueueDepthTracksPendingOperationsBeforeIoRuns) {
 
   EXPECT_EQ(task->GetState().GetQueueDepth(), 0U);
   EXPECT_TRUE(task->GetState().IsFailed());
+}
+
+TEST(PostgreSqlTaskTest,
+     ParameterizedRequestHelpersScheduleTypedRawAndExplicitQueryObjects) {
+  boost::asio::io_context io;
+
+  auto typed_task = MakeInvalidFactory(io).Create();
+  ozo::rows_of<int, std::optional<int>> typed_rows;
+  const auto typed_result = bozo::test::RunTaskOperation(io, [&](auto cb) {
+    return typed_task->Request("SELECT $1::integer, $2::integer",
+                               ozo::into(typed_rows), 7,
+                               std::optional<int>{}, std::move(cb));
+  });
+  EXPECT_TRUE(typed_result.GetOzoError());
+  EXPECT_TRUE(typed_rows.empty());
+  EXPECT_TRUE(typed_task->GetState().IsFailed());
+
+  auto raw_task = MakeInvalidFactory(io).Create();
+  ozo::result raw;
+  const auto raw_result = bozo::test::RunTaskOperation(io, [&](auto cb) {
+    return raw_task->RequestRaw("SELECT current_database()", raw,
+                                std::move(cb));
+  });
+  EXPECT_TRUE(raw_result.GetOzoError());
+  EXPECT_TRUE(raw_task->GetState().IsFailed());
+
+  auto explicit_query_task = MakeInvalidFactory(io).Create();
+  ozo::result explicit_raw;
+  const auto explicit_query_result =
+      bozo::test::RunTaskOperation(io, [&](auto cb) {
+        return explicit_query_task->RequestRaw(
+            bozo::postgresql::MakeQuery("SELECT $1::integer", 42),
+            explicit_raw, std::move(cb));
+      });
+  EXPECT_TRUE(explicit_query_result.GetOzoError());
+  EXPECT_TRUE(explicit_query_task->GetState().IsFailed());
 }
 
 TEST(PostgreSqlTaskTest, RequestValueDeliversOutputObjectToCallback) {
@@ -336,6 +398,55 @@ TEST(PostgreSqlTaskTest,
   EXPECT_TRUE(callback_saw_live_rows);
   EXPECT_EQ(row_count, 0U);
   EXPECT_TRUE(weak_rows.expired());
+}
+
+TEST(PostgreSqlTaskTest,
+     MoveOnlyParametersCanBeQueuedWithTextOverloadsAndMakeQuery) {
+  boost::asio::io_context io;
+  auto task = MakeInvalidFactory(io).Create();
+
+  std::mutex mutex;
+  std::vector<int> order;
+  std::vector<bozo::postgresql::PostgreSqlTaskResult> results;
+  std::promise<void> done;
+  auto future = done.get_future();
+  std::atomic<int> callbacks{0};
+
+  auto callback = [&](int id) {
+    return [&, id](const bozo::postgresql::PostgreSqlTaskResult &result) {
+      {
+        std::lock_guard<std::mutex> lock(mutex);
+        order.push_back(id);
+        results.push_back(result);
+      }
+      if (callbacks.fetch_add(1) + 1 == 2) {
+        done.set_value();
+      }
+    };
+  };
+
+  auto text_param = std::make_unique<std::string>("text-overload");
+  auto make_query_param = std::make_unique<std::string>("explicit-query");
+
+  ASSERT_FALSE(task->Execute("SELECT $1::text", std::move(text_param),
+                             callback(1)));
+  ASSERT_FALSE(task->Execute(
+      bozo::postgresql::MakeQuery("SELECT $1::text",
+                                  std::move(make_query_param)),
+      callback(2)));
+
+  EXPECT_EQ(text_param, nullptr);
+  EXPECT_EQ(make_query_param, nullptr);
+
+  io.run();
+  future.get();
+
+  EXPECT_THAT(order, ElementsAre(1, 2));
+  ASSERT_EQ(results.size(), 2U);
+  EXPECT_TRUE(results[0].GetOzoError());
+  EXPECT_EQ(results[1].GetTaskError(),
+            make_error_code(PostgreSqlTaskErrc::kFailed));
+  EXPECT_TRUE(task->GetState().IsFailed());
 }
 
 TEST(PostgreSqlTaskTest,

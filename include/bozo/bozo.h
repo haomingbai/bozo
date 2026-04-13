@@ -8,6 +8,7 @@
 #ifndef BOZO_BOZO_H_
 #define BOZO_BOZO_H_
 
+#include "bozo/postgresql/postgresql_query.h"
 #include "bozo/postgresql/postgresql_task.h"
 
 #endif // BOZO_BOZO_H_

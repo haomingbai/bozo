@@ -19,6 +19,15 @@ executors.
 - user guide: [docs/guides/postgresql-task.md](docs/guides/postgresql-task.md)
 - design: [docs/design/postgresql-task.md](docs/design/postgresql-task.md)
 
+For queries you can choose either:
+
+- direct text overloads such as `task->Execute("... $1 ...", p1, ..., cb)`
+- explicit bozo query objects via `bozo::postgresql::MakeQuery(...)`
+- existing OZO query objects such as `_SQL` / `query_builder`
+
+Move-only parameter support is guaranteed for bozo's own parameterized query
+paths (`MakeQuery(...)` and the text overloads).
+
 For query output you can choose either:
 
 - caller-owned output via `Request()` / `RequestRaw()`

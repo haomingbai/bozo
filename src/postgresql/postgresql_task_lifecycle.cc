@@ -37,9 +37,9 @@ std::string CopyErrorContextIfAny(const Handle& handle) {
 std::error_code PostgreSqlTask::StartTransaction(Callback cb) {
   QueuedOperation operation;
   operation.callback = cb;
-  operation.start = [this, cb = std::move(cb)]() mutable {
+  operation.start = OperationStart([this, cb = std::move(cb)]() mutable {
     StartTransactionImpl(std::move(cb));
-  };
+  });
   return EnqueueOperation(std::move(operation),
                           QueuedOperationKind::kStartTransaction,
                           PostgreSqlTaskPhase::kTransaction);
@@ -48,9 +48,9 @@ std::error_code PostgreSqlTask::StartTransaction(Callback cb) {
 std::error_code PostgreSqlTask::CommitTransaction(Callback cb) {
   QueuedOperation operation;
   operation.callback = cb;
-  operation.start = [this, cb = std::move(cb)]() mutable {
+  operation.start = OperationStart([this, cb = std::move(cb)]() mutable {
     CommitOrRollbackImpl(true, std::move(cb));
-  };
+  });
   return EnqueueOperation(std::move(operation),
                           QueuedOperationKind::kCommitTransaction,
                           PostgreSqlTaskPhase::kConnection);
@@ -59,9 +59,9 @@ std::error_code PostgreSqlTask::CommitTransaction(Callback cb) {
 std::error_code PostgreSqlTask::RollbackTransaction(Callback cb) {
   QueuedOperation operation;
   operation.callback = cb;
-  operation.start = [this, cb = std::move(cb)]() mutable {
+  operation.start = OperationStart([this, cb = std::move(cb)]() mutable {
     CommitOrRollbackImpl(false, std::move(cb));
-  };
+  });
   return EnqueueOperation(std::move(operation),
                           QueuedOperationKind::kRollbackTransaction,
                           PostgreSqlTaskPhase::kConnection);

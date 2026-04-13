@@ -7,15 +7,12 @@
 
 #include "bozo/bozo.h"
 #include "ozo/ext/std/optional.h"
-#include "ozo/query_builder.h"
 #include "ozo/result.h"
 
 namespace {
 
 using bozo::postgresql::PostgreSqlTaskPhase;
 using bozo::postgresql::PostgreSqlTaskResult;
-using ozo::literals::operator""_SQL;
-
 const char *PhaseName(PostgreSqlTaskPhase phase) {
   switch (phase) {
   case PostgreSqlTaskPhase::kCreated:
@@ -63,17 +60,16 @@ int main(int argc, char **argv) {
 
   int exit_code = EXIT_SUCCESS;
 
-  const auto query =
-      R"(SELECT * FROM (
-           VALUES
-             (1::integer, E'first line\nsecond line'::text, NULL::integer),
-             (2::integer, E'another row'::text, 7::integer)
-         ) AS t(id, note, score)
-         ORDER BY id)"_SQL;
-
   auto ec =
       task->RequestValue<ozo::rows_of<int, std::string, std::optional<int>>>(
-          query,
+          "SELECT * FROM ("
+          "VALUES "
+          "($1::integer, $2::text, $3::integer), "
+          "($4::integer, $5::text, $6::integer)"
+          ") AS t(id, note, score) "
+          "ORDER BY id;",
+          1, std::string("first line\nsecond line"), std::optional<int>{}, 2,
+          std::string("another row"), std::optional<int>{7},
           [&, task](const PostgreSqlTaskResult &typed_result,
                     const ozo::rows_of<int, std::string, std::optional<int>>
                         &rows) {
@@ -96,7 +92,9 @@ int main(int argc, char **argv) {
         }
 
         auto raw_ec = task->RequestRawValue(
-            "SELECT current_database(), current_schema()"_SQL,
+            bozo::postgresql::MakeQuery(
+                "SELECT current_database(), current_schema(), $1::text;",
+                std::string("via MakeQuery")),
             [&, task](const PostgreSqlTaskResult &raw_cb_result,
                       const ozo::result &raw_result) {
               if (PrintFailure("raw request", raw_cb_result)) {
@@ -106,7 +104,8 @@ int main(int argc, char **argv) {
 
               std::cout << "raw columns=" << raw_result[0].size()
                         << " database=" << raw_result[0][0].data()
-                        << " schema=" << raw_result[0][1].data() << '\n';
+                        << " schema=" << raw_result[0][1].data()
+                        << " tag=" << raw_result[0][2].data() << '\n';
 
               auto close_ec =
                   task->Close([&](const PostgreSqlTaskResult &close_result) {

@@ -30,16 +30,40 @@ PostgreSqlTask::MakeHandleVariant(Handle handle) {
 }
 
 template <typename Query, typename CallbackLike>
+  requires IsBinaryQueryObject<Query>
 inline std::error_code PostgreSqlTask::Execute(Query &&query,
                                                CallbackLike &&cb) {
+  return EnqueueExecuteOperation(std::forward<Query>(query),
+                                 std::forward<CallbackLike>(cb));
+}
+
+template <typename Text, typename... Args>
+  requires(ozo::QueryText<std::decay_t<Text>> &&
+           !IsBinaryQueryObject<Text> &&
+           sizeof...(Args) > 0)
+inline std::error_code PostgreSqlTask::Execute(Text &&text, Args &&...args) {
+  auto stored_args = std::make_tuple(std::forward<Args>(args)...);
+  constexpr std::size_t kCallbackIndex = sizeof...(Args) - 1;
+  auto query = MakeQueryFromStoredArguments(std::forward<Text>(text),
+                                            stored_args);
+  return EnqueueExecuteOperation(std::move(query),
+                                 std::move(std::get<kCallbackIndex>(
+                                     stored_args)));
+}
+
+template <typename Query, typename CallbackLike>
+  requires IsBinaryQueryObject<Query>
+inline std::error_code PostgreSqlTask::EnqueueExecuteOperation(
+    Query &&query, CallbackLike &&cb) {
   auto callback = NormalizeCallback(std::forward<CallbackLike>(cb));
   QueuedOperation operation;
   operation.callback = callback;
-  operation.start = [this,
-                     query = std::decay_t<Query>(std::forward<Query>(query)),
-                     callback = std::move(callback)]() mutable {
-    StartExecuteImpl(std::move(query), std::move(callback));
-  };
+  operation.start =
+      OperationStart([this, query = std::decay_t<Query>(std::forward<Query>(
+                                query)),
+                      callback = std::move(callback)]() mutable {
+        StartExecuteImpl(std::move(query), std::move(callback));
+      });
 
   PostgreSqlTaskPhase next_phase = GetActualPhase();
   {
@@ -54,16 +78,42 @@ inline std::error_code PostgreSqlTask::Execute(Query &&query,
 }
 
 template <typename Query, typename Out, typename CallbackLike>
+  requires IsBinaryQueryObject<Query>
 inline std::error_code PostgreSqlTask::Request(Query &&query, Out out,
                                                CallbackLike &&cb) {
+  return EnqueueRequestOperation(std::forward<Query>(query), std::move(out),
+                                 std::forward<CallbackLike>(cb));
+}
+
+template <typename Text, typename Out, typename... Args>
+  requires(ozo::QueryText<std::decay_t<Text>> &&
+           !IsBinaryQueryObject<Text> &&
+           sizeof...(Args) > 0)
+inline std::error_code PostgreSqlTask::Request(Text &&text, Out out,
+                                               Args &&...args) {
+  auto stored_args = std::make_tuple(std::forward<Args>(args)...);
+  constexpr std::size_t kCallbackIndex = sizeof...(Args) - 1;
+  auto query = MakeQueryFromStoredArguments(std::forward<Text>(text),
+                                            stored_args);
+  return EnqueueRequestOperation(
+      std::move(query), std::move(out),
+      std::move(std::get<kCallbackIndex>(stored_args)));
+}
+
+template <typename Query, typename Out, typename CallbackLike>
+  requires IsBinaryQueryObject<Query>
+inline std::error_code PostgreSqlTask::EnqueueRequestOperation(
+    Query &&query, Out out, CallbackLike &&cb) {
   auto callback = NormalizeCallback(std::forward<CallbackLike>(cb));
   QueuedOperation operation;
   operation.callback = callback;
   operation.start =
-      [this, query = std::decay_t<Query>(std::forward<Query>(query)),
-       out = std::move(out), callback = std::move(callback)]() mutable {
+      OperationStart([this, query = std::decay_t<Query>(std::forward<Query>(
+                                   query)),
+                      out = std::move(out),
+                      callback = std::move(callback)]() mutable {
         StartRequestImpl(std::move(query), std::move(out), std::move(callback));
-      };
+      });
 
   PostgreSqlTaskPhase next_phase = GetActualPhase();
   {
@@ -78,6 +128,7 @@ inline std::error_code PostgreSqlTask::Request(Query &&query, Out out,
 }
 
 template <typename Output, typename Query, typename CallbackLike>
+  requires IsBinaryQueryObject<Query>
 inline std::error_code PostgreSqlTask::RequestValue(Query &&query,
                                                     CallbackLike &&cb) {
   using StoredOutput = std::remove_cvref_t<Output>;
@@ -87,18 +138,63 @@ inline std::error_code PostgreSqlTask::RequestValue(Query &&query,
                  std::move(callback));
 }
 
+template <typename Output, typename Text, typename... Args>
+  requires(ozo::QueryText<std::decay_t<Text>> &&
+           !IsBinaryQueryObject<Text> &&
+           sizeof...(Args) > 0)
+inline std::error_code PostgreSqlTask::RequestValue(Text &&text,
+                                                    Args &&...args) {
+  auto stored_args = std::make_tuple(std::forward<Args>(args)...);
+  constexpr std::size_t kCallbackIndex = sizeof...(Args) - 1;
+  auto query = MakeQueryFromStoredArguments(std::forward<Text>(text),
+                                            stored_args);
+  return RequestValue<Output>(std::move(query),
+                              std::move(std::get<kCallbackIndex>(
+                                  stored_args)));
+}
+
 template <typename Query, typename CallbackLike>
+  requires IsBinaryQueryObject<Query>
 inline std::error_code
 PostgreSqlTask::RequestRaw(Query &&query, ozo::result &out, CallbackLike &&cb) {
   return Request(std::forward<Query>(query), ozo::into(out),
                  std::forward<CallbackLike>(cb));
 }
 
+template <typename Text, typename... Args>
+  requires(ozo::QueryText<std::decay_t<Text>> &&
+           !IsBinaryQueryObject<Text> &&
+           sizeof...(Args) > 0)
+inline std::error_code PostgreSqlTask::RequestRaw(Text &&text, ozo::result &out,
+                                                  Args &&...args) {
+  auto stored_args = std::make_tuple(std::forward<Args>(args)...);
+  constexpr std::size_t kCallbackIndex = sizeof...(Args) - 1;
+  auto query = MakeQueryFromStoredArguments(std::forward<Text>(text),
+                                            stored_args);
+  return RequestRaw(std::move(query), out,
+                    std::move(std::get<kCallbackIndex>(stored_args)));
+}
+
 template <typename Query, typename CallbackLike>
+  requires IsBinaryQueryObject<Query>
 inline std::error_code PostgreSqlTask::RequestRawValue(Query &&query,
                                                        CallbackLike &&cb) {
   return RequestValue<ozo::result>(std::forward<Query>(query),
                                    std::forward<CallbackLike>(cb));
+}
+
+template <typename Text, typename... Args>
+  requires(ozo::QueryText<std::decay_t<Text>> &&
+           !IsBinaryQueryObject<Text> &&
+           sizeof...(Args) > 0)
+inline std::error_code PostgreSqlTask::RequestRawValue(Text &&text,
+                                                       Args &&...args) {
+  auto stored_args = std::make_tuple(std::forward<Args>(args)...);
+  constexpr std::size_t kCallbackIndex = sizeof...(Args) - 1;
+  auto query = MakeQueryFromStoredArguments(std::forward<Text>(text),
+                                            stored_args);
+  return RequestRawValue(std::move(query),
+                         std::move(std::get<kCallbackIndex>(stored_args)));
 }
 
 template <typename Output, typename CallbackLike>
@@ -110,6 +206,25 @@ inline auto PostgreSqlTask::BindOutput(std::shared_ptr<Output> output,
              const PostgreSqlTaskResult &result) mutable {
     std::invoke(callback, result, *output);
   };
+}
+
+template <typename Text, typename Tuple, std::size_t... Indexes>
+inline auto PostgreSqlTask::MakeQueryFromStoredArgumentsImpl(
+    Text &&text, Tuple &stored_arguments, std::index_sequence<Indexes...>) {
+  return MakeQuery(std::forward<Text>(text),
+                   std::move(std::get<Indexes>(stored_arguments))...);
+}
+
+template <typename Text, typename Tuple>
+inline auto PostgreSqlTask::MakeQueryFromStoredArguments(
+    Text &&text, Tuple &stored_arguments) {
+  using StoredTuple = std::remove_reference_t<Tuple>;
+  constexpr std::size_t kTupleSize = std::tuple_size_v<StoredTuple>;
+  static_assert(kTupleSize > 0,
+                "parameterized query helpers expect a callback argument");
+  return MakeQueryFromStoredArgumentsImpl(
+      std::forward<Text>(text), stored_arguments,
+      std::make_index_sequence<kTupleSize - 1>{});
 }
 
 template <typename Query>

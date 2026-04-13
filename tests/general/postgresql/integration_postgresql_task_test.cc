@@ -161,6 +161,97 @@ TEST(PostgreSqlTaskIntegrationTest,
 }
 
 TEST(PostgreSqlTaskIntegrationTest,
+     ParameterizedTextAndMakeQuerySupportCopyableOptionalAndMoveOnlyParams) {
+  const auto conninfo = bozo::test::RequireTestConninfo();
+  if (conninfo.empty()) {
+    GTEST_SKIP() << "BOZO_PG_TEST_CONNINFO is not set";
+  }
+
+  boost::asio::io_context io;
+  auto task = MakeDirectFactory(io, conninfo).Create();
+
+  ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
+                return task->Execute(
+                    "DROP TABLE IF EXISTS bozo_it_parameterized;"_SQL,
+                    std::move(cb));
+              }).Ok());
+  ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
+                return task->Execute(
+                    "CREATE TABLE bozo_it_parameterized ("
+                    "id integer PRIMARY KEY, note text, score integer);"_SQL,
+                    std::move(cb));
+              }).Ok());
+
+  ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
+                return task->Execute(
+                    "INSERT INTO bozo_it_parameterized (id, note, score) "
+                    "VALUES ($1, $2, $3);",
+                    1, std::string("text overload"), std::optional<int>{7},
+                    std::move(cb));
+              }).Ok());
+  ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
+                return task->Execute(
+                    bozo::postgresql::MakeQuery(
+                        "INSERT INTO bozo_it_parameterized (id, note, score) "
+                        "VALUES ($1, $2, $3);",
+                        2, std::make_unique<std::string>("move only row"),
+                        std::optional<int>{}),
+                    std::move(cb));
+              }).Ok());
+  ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
+                return task->Execute(
+                    "UPDATE bozo_it_parameterized SET note = $2 WHERE id = $1;",
+                    1, std::string("updated text overload"), std::move(cb));
+              }).Ok());
+
+  ozo::rows_of<int, std::string, std::optional<int>> all_rows;
+  const auto all_rows_result = bozo::test::RunTaskOperation(io, [&](auto cb) {
+    return task->Request(
+        "SELECT id, note, score FROM bozo_it_parameterized ORDER BY id;"_SQL,
+        ozo::into(all_rows), std::move(cb));
+  });
+  ASSERT_TRUE(all_rows_result.Ok());
+  EXPECT_THAT(
+      all_rows,
+      ElementsAre(std::make_tuple(1, "updated text overload", 7),
+                  std::make_tuple(2, "move only row", std::nullopt)));
+
+  ozo::rows_of<std::int64_t> null_score_rows;
+  const auto null_score_result =
+      bozo::test::RunTaskOperation(io, [&](auto cb) {
+        return task->Request(
+            "SELECT COUNT(*) FROM bozo_it_parameterized "
+            "WHERE score IS NOT DISTINCT FROM $1;",
+            ozo::into(null_score_rows), std::optional<int>{}, std::move(cb));
+      });
+  ASSERT_TRUE(null_score_result.Ok());
+  ASSERT_EQ(null_score_rows.size(), 1U);
+  EXPECT_EQ(std::get<0>(null_score_rows.front()), 1);
+
+  ozo::rows_of<std::string> move_only_rows;
+  const auto move_only_result =
+      bozo::test::RunTaskOperation(io, [&](auto cb) {
+        return task->Request(
+            bozo::postgresql::MakeQuery(
+                "SELECT note FROM bozo_it_parameterized WHERE id = $1;", 2),
+            ozo::into(move_only_rows), std::move(cb));
+      });
+  ASSERT_TRUE(move_only_result.Ok());
+  ASSERT_EQ(move_only_rows.size(), 1U);
+  EXPECT_EQ(std::get<0>(move_only_rows.front()), "move only row");
+
+  ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
+                return task->Execute(
+                    "DROP TABLE IF EXISTS bozo_it_parameterized;"_SQL,
+                    std::move(cb));
+              }).Ok());
+  EXPECT_TRUE(bozo::test::RunTaskOperation(
+                  io, [&](auto cb) { return task->Close(std::move(cb)); })
+                  .GetState()
+                  .IsClosed());
+}
+
+TEST(PostgreSqlTaskIntegrationTest,
      TransactionCommitAndRollbackAffectVisibility) {
   const auto conninfo = bozo::test::RequireTestConninfo();
   if (conninfo.empty()) {
@@ -189,8 +280,9 @@ TEST(PostgreSqlTaskIntegrationTest,
 
   ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
                 return task->Execute(
-                    R"(INSERT INTO bozo_it_visibility (id, note)
-                           VALUES (1, E'committed\nvalue'))"_SQL,
+                    "INSERT INTO bozo_it_visibility (id, note) "
+                    "VALUES ($1, $2);",
+                    1, std::string("committed\nvalue"),
                     std::move(cb));
               }).Ok());
 
@@ -203,8 +295,9 @@ TEST(PostgreSqlTaskIntegrationTest,
   ozo::rows_of<std::int64_t> count_rows;
   const auto verify_after_commit =
       bozo::test::RunTaskOperation(io, [&](auto cb) {
-        return verifier->Request("SELECT COUNT(*) FROM bozo_it_visibility;"_SQL,
-                                 ozo::into(count_rows), std::move(cb));
+        return verifier->Request(
+            "SELECT COUNT(*) FROM bozo_it_visibility WHERE id >= $1;", ozo::into(count_rows),
+            1, std::move(cb));
       });
   ASSERT_TRUE(verify_after_commit.Ok())
       << verify_after_commit.GetTaskError().message() << " | "
@@ -219,8 +312,10 @@ TEST(PostgreSqlTaskIntegrationTest,
               }).Ok());
   ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
                 return task->Execute(
-                    R"(INSERT INTO bozo_it_visibility (id, note)
-                           VALUES (2, E'rolled\nback'))"_SQL,
+                    bozo::postgresql::MakeQuery(
+                        "INSERT INTO bozo_it_visibility (id, note) "
+                        "VALUES ($1, $2);",
+                        2, std::string("rolled\nback")),
                     std::move(cb));
               }).Ok());
   ASSERT_TRUE(bozo::test::RunTaskOperation(io, [&](auto cb) {
@@ -230,8 +325,10 @@ TEST(PostgreSqlTaskIntegrationTest,
   count_rows.clear();
   const auto verify_after_rollback =
       bozo::test::RunTaskOperation(io, [&](auto cb) {
-        return verifier->Request("SELECT COUNT(*) FROM bozo_it_visibility;"_SQL,
-                                 ozo::into(count_rows), std::move(cb));
+        return verifier->Request(
+            bozo::postgresql::MakeQuery(
+                "SELECT COUNT(*) FROM bozo_it_visibility WHERE id >= $1;", 1),
+            ozo::into(count_rows), std::move(cb));
       });
   ASSERT_TRUE(verify_after_rollback.Ok())
       << verify_after_rollback.GetTaskError().message() << " | "

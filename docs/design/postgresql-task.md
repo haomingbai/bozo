@@ -35,6 +35,23 @@ stable public lifecycle.
 - no cross-task scheduling guarantees
 - no public API for arbitrary OZO handle injection or custom composite decoders
 
+## Parameterized Query Adaptation
+
+`bozo` now exposes its own `bozo::postgresql::MakeQuery()` and SQL-text
+overloads on `PostgreSqlTask`.
+
+This is not just API sugar. The default OZO `Query` path reads parameters
+through `const` query accessors, which is fine for copyable values but does not
+fully support move-only parameters. `bozo` avoids that limitation by:
+
+- adapting `ParameterizedQuery` directly to `ozo::binary_query`
+- storing queued start operations behind a move-only type erasure instead of
+  `std::function<void()>`
+
+OZO-native query objects such as `_SQL`, `ozo::query_builder`, and
+`ozo::make_query(...)` still work. The stronger move-only guarantee applies to
+the bozo-owned parameterized query path.
+
 ## Core Runtime Pieces
 
 | Piece | Role |
@@ -50,6 +67,8 @@ stable public lifecycle.
 
 The implementation is split across:
 
+- `include/bozo/postgresql/postgresql_query.h`
+  bozo-owned parameterized query type and OZO binary-query adaptation
 - `include/bozo/postgresql/postgresql_task.h`
   public API, core fields, and non-template declarations
 - `include/bozo/postgresql/postgresql_task-inl.h`

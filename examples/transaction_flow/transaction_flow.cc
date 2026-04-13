@@ -87,18 +87,18 @@ int main(int argc, char **argv) {
 
   inspect_after_commit = [&] {
     count_rows.clear();
-    auto ec = task->Request("SELECT COUNT(*) FROM bozo_demo_notes;"_SQL,
-                            ozo::into(count_rows),
-                            [&](const PostgreSqlTaskResult &result) {
-                              if (PrintFailure("count after commit", result)) {
-                                exit_code = EXIT_FAILURE;
-                                return;
-                              }
-                              std::cout << "rows visible after commit: "
-                                        << std::get<0>(count_rows.front())
-                                        << '\n';
-                              finish();
-                            });
+    auto ec = task->Request(
+        "SELECT COUNT(*) FROM bozo_demo_notes WHERE id >= $1;",
+        ozo::into(count_rows), 1,
+        [&](const PostgreSqlTaskResult &result) {
+          if (PrintFailure("count after commit", result)) {
+            exit_code = EXIT_FAILURE;
+            return;
+          }
+          std::cout << "rows visible after commit: "
+                    << std::get<0>(count_rows.front()) << '\n';
+          finish();
+        });
     if (ec) {
       std::cerr << "failed to schedule count after commit: " << ec.message()
                 << '\n';
@@ -115,8 +115,10 @@ int main(int argc, char **argv) {
       std::cout << "phase after second StartTransaction: "
                 << PhaseName(result.GetState().GetPhase()) << '\n';
       auto insert_ec = task->Execute(
-          R"(INSERT INTO bozo_demo_notes (id, title, body)
-             VALUES (3, 'committed row', E'written\nand committed'))"_SQL,
+          "INSERT INTO bozo_demo_notes (id, title, body) "
+          "VALUES ($1, $2, $3);",
+          3, std::string("committed row"),
+          std::string("written\nand committed"),
           [&](const PostgreSqlTaskResult &insert_result) {
             if (PrintFailure("insert committed row", insert_result)) {
               exit_code = EXIT_FAILURE;
@@ -155,7 +157,9 @@ int main(int argc, char **argv) {
   inspect_after_rollback = [&] {
     count_rows.clear();
     auto ec = task->Request(
-        "SELECT COUNT(*) FROM bozo_demo_notes;"_SQL, ozo::into(count_rows),
+        bozo::postgresql::MakeQuery(
+            "SELECT COUNT(*) FROM bozo_demo_notes WHERE id >= $1;", 1),
+        ozo::into(count_rows),
         [&](const PostgreSqlTaskResult &result) {
           if (PrintFailure("count after rollback", result)) {
             exit_code = EXIT_FAILURE;
@@ -182,10 +186,13 @@ int main(int argc, char **argv) {
                 << PhaseName(result.GetState().GetPhase()) << '\n';
 
       auto insert_ec = task->Execute(
-          R"(INSERT INTO bozo_demo_notes (id, title, body)
-             VALUES
-               (1, 'rollback row', NULL),
-               (2, 'multiline row', E'first line\nsecond line'))"_SQL,
+          bozo::postgresql::MakeQuery(
+              "INSERT INTO bozo_demo_notes (id, title, body) "
+              "VALUES ($1, $2, $3), ($4, $5, $6);",
+              1, std::string("rollback row"),
+              std::optional<std::string>{}, 2,
+              std::string("multiline row"),
+              std::optional<std::string>{"first line\nsecond line"}),
           [&](const PostgreSqlTaskResult &insert_result) {
             if (PrintFailure("insert rollback rows", insert_result)) {
               exit_code = EXIT_FAILURE;

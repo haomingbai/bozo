@@ -106,6 +106,59 @@ auto task = factory.Create();
 
 ## Query Styles
 
+Every `Execute()` / `Request*()` entry point accepts three query forms:
+
+- SQL text plus bound parameters, with the callback as the last argument
+- `bozo::postgresql::MakeQuery(...)`
+- existing OZO query objects such as `_SQL` and `ozo::query_builder`
+
+If you need move-only parameters such as `std::unique_ptr<std::string>`, use
+the bozo parameterized paths (`MakeQuery(...)` or the SQL-text overloads).
+
+### Parameterized Text Overloads
+
+```cpp
+task->Execute(
+    "INSERT INTO notes (id, note, score) VALUES ($1, $2, $3);",
+    1,
+    std::string("hello"),
+    std::optional<int>{7},
+    [](const PostgreSqlTaskResult& result) {
+      if (!result.Ok()) {
+        return;
+      }
+    });
+```
+
+The callback is always the last argument. Zero-parameter statements still work:
+
+```cpp
+task->RequestRawValue(
+    "SELECT current_database()",
+    [](const PostgreSqlTaskResult& result, const ozo::result& raw) {
+      if (!result.Ok()) {
+        return;
+      }
+    });
+```
+
+### Explicit bozo Query Objects
+
+```cpp
+auto query = bozo::postgresql::MakeQuery(
+    "SELECT note FROM notes WHERE id = $1;",
+    1);
+
+task->RequestValue<ozo::rows_of<std::string>>(
+    std::move(query),
+    [](const PostgreSqlTaskResult& result,
+       const ozo::rows_of<std::string>& rows) {
+      if (!result.Ok()) {
+        return;
+      }
+    });
+```
+
 ### Caller-Owned Decoded Output
 
 Use `Request()` or `RequestRaw()` when you want to own the output object.
@@ -114,8 +167,9 @@ Use `Request()` or `RequestRaw()` when you want to own the output object.
 auto rows = std::make_shared<ozo::rows_of<int>>();
 
 task->Request(
-    "SELECT pg_backend_pid()"_SQL,
+    "SELECT $1::integer",
     ozo::into(*rows),
+    42,
     bozo::postgresql::PostgreSqlTask::BindOutput(
         rows,
         [](const PostgreSqlTaskResult& result,
@@ -138,11 +192,18 @@ manage output lifetime yourself.
 ```cpp
 task->RequestValue<
     ozo::rows_of<int, std::string, std::optional<int>>>(
-    R"(SELECT * FROM (
-         VALUES
-           (1::integer, E'first line\nsecond line'::text, NULL::integer),
-           (2::integer, 'single line'::text, 7::integer)
-       ) AS t(id, note, score))"_SQL,
+    bozo::postgresql::MakeQuery(
+        "SELECT * FROM ("
+        "VALUES "
+        "($1::integer, $2::text, $3::integer), "
+        "($4::integer, $5::text, $6::integer)"
+        ") AS t(id, note, score)",
+        1,
+        std::string("first line\nsecond line"),
+        std::optional<int>{},
+        2,
+        std::string("single line"),
+        std::optional<int>{7}),
     [&](const PostgreSqlTaskResult& result,
         const ozo::rows_of<int, std::string, std::optional<int>>& rows) {
       if (!result.Ok()) {
@@ -161,7 +222,7 @@ Constraints:
 
 ```cpp
 task->RequestRawValue(
-    "SELECT current_database(), current_schema()"_SQL,
+    "SELECT current_database(), current_schema()",
     [](const PostgreSqlTaskResult& result, const ozo::result& raw) {
       if (!result.Ok()) {
         return;
