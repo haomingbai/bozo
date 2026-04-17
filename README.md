@@ -13,6 +13,9 @@ It ships as a normal CMake library package:
 `b44bdadb1c6bc705a326c26ac6009f1f864c9377`, which no longer requires TS
 executors.
 
+`bozo` is validated against `bsrvcore` versions `v0.14.0` through `v0.16.0`.
+The default `FetchContent` version is `v0.16.0`.
+
 ## Documentation
 
 - overview: [docs/README.md](docs/README.md)

@@ -56,7 +56,7 @@ set(BOZO_BSRVCORE_SOURCE_DIR "" CACHE PATH
 set(BOZO_BSRVCORE_GIT_REPOSITORY "https://github.com/haomingbai/bsrvcore.git"
   CACHE STRING "Git repository used when bozo fetches bsrvcore."
 )
-set(BOZO_BSRVCORE_GIT_TAG "v0.14.0"
+set(BOZO_BSRVCORE_GIT_TAG "v0.16.0"
   CACHE STRING "Git ref used when bozo fetches bsrvcore."
 )
 
